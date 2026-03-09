@@ -50,3 +50,29 @@ Thumbs.db
 /python/venv/
 /python/__pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+### Python cache ###
+/python/.pytest_cache/
+/python/.mypy_cache/
+/python/.ipynb_checkpoints/
+
+### Python raw data ###
+/python/data/raw/osm/
+/python/data/raw/forest/
+/python/data/raw/dem/
+
+### Python outputs ###
+/python/output/temp/
+/python/output/logs/*.log
+/python/data/interim/temp/
+/python/data/final/temp/
+
+### Optional large generated files ###
+/python/data/interim/**/*.gpkg
+/python/data/interim/**/*.tif
+/python/data/interim/**/*.pbf
+/python/data/final/**/*.gpkg
+/python/data/final/**/*.tif
+/python/data/final/**/*.pbf
