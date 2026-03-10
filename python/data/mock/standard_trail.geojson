@@ -1,0 +1,179 @@
+{
+  "type": "FeatureCollection",
+  "name": "standard_trail",
+  "crs_note": "WGS84 EPSG:4326",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0001",
+        "source": "mock",
+        "mountain_name": "관악산",
+        "trail_name": "입구-갈림길",
+        "segment_type": "trail",
+        "surface": "dirt",
+        "access": "public",
+        "is_official": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.96510, 37.44521],
+          [126.96530, 37.44555],
+          [126.96545, 37.44580]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0002",
+        "source": "mock",
+        "mountain_name": "관악산",
+        "trail_name": "갈림길-정상",
+        "segment_type": "trail",
+        "surface": "rock",
+        "access": "public",
+        "is_official": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.96545, 37.44580],
+          [126.96570, 37.44615],
+          [126.96600, 37.44655]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0003",
+        "source": "mock",
+        "mountain_name": "관악산",
+        "trail_name": "갈림길-쉼터",
+        "segment_type": "trail",
+        "surface": "dirt",
+        "access": "public",
+        "is_official": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.96545, 37.44580],
+          [126.96595, 37.44592],
+          [126.96630, 37.44605]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0004",
+        "source": "mock",
+        "mountain_name": "관악산",
+        "trail_name": "정상-갈림길 역방향중복",
+        "segment_type": "trail",
+        "surface": "rock",
+        "access": "public",
+        "is_official": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.96600, 37.44655],
+          [126.96570, 37.44615],
+          [126.96545, 37.44580]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0005",
+        "source": "mock",
+        "mountain_name": "관악산",
+        "trail_name": "쉼터-능선 MultiLine",
+        "segment_type": "trail",
+        "surface": "mixed",
+        "access": "public",
+        "is_official": false
+      },
+      "geometry": {
+        "type": "MultiLineString",
+        "coordinates": [
+          [
+            [126.96630, 37.44605],
+            [126.96655, 37.44622]
+          ],
+          [
+            [126.96655, 37.44622],
+            [126.96690, 37.44645],
+            [126.96715, 37.44662]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0006",
+        "source": "mock",
+        "mountain_name": "관악산",
+        "trail_name": "쉼터-계단구간",
+        "segment_type": "stairs",
+        "surface": "deck",
+        "access": "public",
+        "is_official": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.96630, 37.44605],
+          [126.96638, 37.44614]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0007",
+        "source": "mock",
+        "mountain_name": "관악산",
+        "trail_name": "고립구간",
+        "segment_type": "trail",
+        "surface": "dirt",
+        "access": "public",
+        "is_official": false
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.96980, 37.44860],
+          [126.97015, 37.44888]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0008",
+        "source": "mock",
+        "mountain_name": "관악산",
+        "trail_name": "입구 옆 도로",
+        "segment_type": "road",
+        "surface": "paved",
+        "access": "public",
+        "is_official": false
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.96485, 37.44510],
+          [126.96510, 37.44521],
+          [126.96528, 37.44528]
+        ]
+      }
+    }
+  ]
+}
