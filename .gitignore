@@ -69,6 +69,9 @@ Thumbs.db
 /python/data/interim/temp/
 /python/data/final/temp/
 
+/python/data/interim/c_output/*
+!/python/data/interim/c_output/.gitkeep
+
 ### Optional large generated files ###
 /python/data/interim/**/*.gpkg
 /python/data/interim/**/*.tif
