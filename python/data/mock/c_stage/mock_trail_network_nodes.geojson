@@ -1,0 +1,57 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0001",
+        "node_type": "start",
+        "degree": 1,
+        "trail_refs": ["T0001"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.96510, 37.44521]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0002",
+        "node_type": "junction",
+        "degree": 3,
+        "trail_refs": ["T0001", "T0002"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.96545, 37.44580]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0003",
+        "node_type": "summit_access",
+        "degree": 1,
+        "trail_refs": ["T0001"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.96610, 37.44640]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0004",
+        "node_type": "end",
+        "degree": 1,
+        "trail_refs": ["T0002"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.96590, 37.44530]
+      }
+    }
+  ]
+}

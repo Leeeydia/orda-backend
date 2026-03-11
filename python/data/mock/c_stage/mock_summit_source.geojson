@@ -1,0 +1,33 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "summit_id": "S0001",
+        "name": "연주대",
+        "elevation_m": 629.0,
+        "source": "공공데이터",
+        "radius_m": 30
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.96620, 37.44655]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "summit_id": "S0002",
+        "name": "가상분기정상",
+        "elevation_m": 450.0,
+        "source": "mock",
+        "radius_m": 30
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.96595, 37.44528]
+      }
+    }
+  ]
+}
