@@ -10,10 +10,13 @@ NETWORK_DIR = DATA_DIR / "network"
 INTERIM_C_OUTPUT_DIR = DATA_DIR / "interim" / "c_output"
 FINAL_DIR = DATA_DIR / "final"
 
+# DEM 원본 경로
+RAW_DEM_DIR = RAW_DIR / "dem" / "nasadem"
+
 # 실데이터 입력 경로
 INPUT_EDGES_PATH = NETWORK_DIR / "trail_network_edges.geojson"
 INPUT_NODES_PATH = NETWORK_DIR / "trail_network_nodes.geojson"
-INPUT_DEM_PATH = RAW_DIR / "dem_raw.tif"
+INPUT_DEM_PATH = RAW_DEM_DIR / "korea_dem.tif"
 INPUT_SUMMIT_SOURCE_PATH = STANDARD_DIR / "standard_summit.geojson"
 
 # 개발 중간 산출물
