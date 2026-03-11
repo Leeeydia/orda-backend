@@ -1,0 +1,65 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "edge_id": "E0001",
+        "trail_id": "T0001",
+        "start_node_id": "N0001",
+        "end_node_id": "N0002",
+        "distance_m": 320.4,
+        "segment_order": 1,
+        "is_bidirectional": true,
+        "merge_status": "cleaned"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.96510, 37.44521],
+          [126.96545, 37.44580]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "edge_id": "E0002",
+        "trail_id": "T0001",
+        "start_node_id": "N0002",
+        "end_node_id": "N0003",
+        "distance_m": 280.6,
+        "segment_order": 2,
+        "is_bidirectional": true,
+        "merge_status": "cleaned"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.96545, 37.44580],
+          [126.96610, 37.44640]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "edge_id": "E0003",
+        "trail_id": "T0002",
+        "start_node_id": "N0002",
+        "end_node_id": "N0004",
+        "distance_m": 150.0,
+        "segment_order": 1,
+        "is_bidirectional": true,
+        "merge_status": "cleaned"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.96545, 37.44580],
+          [126.96590, 37.44530]
+        ]
+      }
+    }
+  ]
+}

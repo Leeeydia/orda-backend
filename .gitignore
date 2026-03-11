@@ -1,5 +1,3 @@
-HELP.md
-
 ### Gradle ###
 .gradle/
 build/
@@ -68,6 +66,14 @@ Thumbs.db
 /python/output/logs/*.log
 /python/data/interim/temp/
 /python/data/final/temp/
+
+### Python interim outputs ###
+/python/data/interim/a_output/*
+/python/data/interim/b_output/*
+/python/data/interim/c_output/*
+!/python/data/interim/a_output/.gitkeep
+!/python/data/interim/b_output/.gitkeep
+!/python/data/interim/c_output/.gitkeep
 
 ### Optional large generated files ###
 /python/data/interim/**/*.gpkg
