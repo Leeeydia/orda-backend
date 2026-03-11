@@ -1,0 +1,33 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "summit_id": "S0001",
+        "name": "관악산 연주대",
+        "elevation_m": 629.0,
+        "source": "mock",
+        "radius_m": 50
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.96610, 37.44650]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "summit_id": "S0002",
+        "name": "관악산 삼성봉",
+        "elevation_m": 580.0,
+        "source": "mock",
+        "radius_m": 50
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.96400, 37.44500]
+      }
+    }
+  ]
+}
