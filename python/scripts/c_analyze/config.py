@@ -1,3 +1,7 @@
+import os
+import pyproj
+os.environ["PROJ_LIB"] = pyproj.datadir.get_data_dir()
+
 from pathlib import Path
 
 # ──────────────────────────────────────────────
