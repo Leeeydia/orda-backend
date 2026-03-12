@@ -27,6 +27,8 @@ PRUNE_DANGLING_EDGE_MIN_M = 20.0
 
 PRUNE_MAX_ITERATIONS = 50
 
+DUPLICATE_EDGE_LENGTH_TOLERANCE_M = 5.0
+
 # =========================================================
 # 2. 공통 함수
 # =========================================================
@@ -73,6 +75,14 @@ def make_line_key(coords: list[list[float]], is_bidirectional: bool = True) -> t
         return min(rounded, tuple(reversed(rounded)))
     return rounded
 
+def make_node_pair_key(
+        start_node_id: str,
+        end_node_id: str,
+        is_bidirectional: bool
+) -> tuple[str, str] | tuple[str, str, str]:
+    if is_bidirectional:
+        return tuple(sorted([start_node_id, end_node_id]))
+    return start_node_id, end_node_id, "directed"
 
 def calculate_length_m(coords: list[list[float]]) -> float:
     lons = [c[0] for c in coords]
@@ -112,6 +122,32 @@ def dedupe_consecutive_coords(coords: list[list[float]]) -> list[list[float]]:
         if make_point_key(coord) != make_point_key(result[-1]):
             result.append(coord)
     return result
+
+def is_effectively_duplicate_edge(
+        existing_edge: dict,
+        start_node_id: str,
+        end_node_id: str,
+        distance_m: float,
+        is_bidirectional: bool,
+        tolerance_m: float = DUPLICATE_EDGE_LENGTH_TOLERANCE_M,
+) -> bool:
+    if existing_edge["is_bidirectional"] != is_bidirectional:
+        return False
+
+    existing_pair_key = make_node_pair_key(
+        existing_edge["start_node_id"],
+        existing_edge["end_node_id"],
+        existing_edge["is_bidirectional"],
+    )
+    new_pair_key = make_node_pair_key(start_node_id, end_node_id, is_bidirectional)
+
+    if existing_pair_key != new_pair_key:
+        return False
+
+    if abs(existing_edge["distance_m"] - distance_m) > tolerance_m:
+        return False
+
+    return True
 
 # =========================================================
 # 3. 노드 레지스트리
@@ -214,6 +250,7 @@ def build_initial_graph(
 
     edges: dict[str, dict] = {}
     seen_line_keys: set[tuple] = set()
+    seen_edges_by_node_pair: dict[tuple, dict] = {}
     next_edge_number = 1
 
     stats = {
@@ -227,13 +264,6 @@ def build_initial_graph(
             stats["invalid_zero_length"] += 1
             continue
 
-        line_key = make_line_key(coords, segment["is_bidirectional"])
-        if line_key in seen_line_keys:
-            print(f"[중복 제거] trail_id={segment['trail_id']}, segment_order={segment['source_segment_order']}")
-            stats["duplicate_removed_count"] += 1
-            continue
-        seen_line_keys.add(line_key)
-
         distance_m = calculate_length_m(coords)
         if distance_m <= 0:
             print(f"[건너뜀] 거리 0 이하 - trail_id={segment['trail_id']}, segment_order={segment['source_segment_order']}")
@@ -243,10 +273,35 @@ def build_initial_graph(
         start_node_id = registry.get_or_create(coords[0])
         end_node_id   = registry.get_or_create(coords[-1])
 
+        line_key = make_line_key(coords, segment["is_bidirectional"])
+        if line_key in seen_line_keys:
+            print(f"[중복 제거: 동일 좌표] trail_id={segment['trail_id']}, segment_order={segment['source_segment_order']}")
+            stats["duplicate_removed_count"] += 1
+            continue
+
+        node_pair_key = make_node_pair_key(
+            start_node_id,
+            end_node_id,
+            segment["is_bidirectional"],
+        )
+
+        existing_edge = seen_edges_by_node_pair.get(node_pair_key)
+        if existing_edge and is_effectively_duplicate_edge(
+                existing_edge=existing_edge,
+                start_node_id=start_node_id,
+                end_node_id=end_node_id,
+                distance_m=distance_m,
+                is_bidirectional=segment["is_bidirectional"],
+        ):
+            print(f"[중복 제거: 동일 노드쌍] trail_id={segment['trail_id']}, segment_order={segment['source_segment_order']}")
+            stats["duplicate_removed_count"] += 1
+            continue
+
+
         edge_id = f"E{next_edge_number:04d}"
         next_edge_number += 1
 
-        edges[edge_id] = {
+        edge = {
             "edge_id": edge_id,
             "trail_id": segment["trail_id"],
             "start_node_id": start_node_id,
@@ -268,6 +323,12 @@ def build_initial_graph(
             "is_official": segment["is_official"],
             "raw_tags": segment["raw_tags"],
         }
+        edges[edge_id] = edge
+        seen_line_keys.add(line_key)
+
+        saved_edge = seen_edges_by_node_pair.get(node_pair_key)
+        if saved_edge is None or len(edge["coords"]) < len(saved_edge["coords"]):
+            seen_edges_by_node_pair[node_pair_key] = edge
 
     return edges, stats
 
