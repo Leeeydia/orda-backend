@@ -134,13 +134,35 @@ def split_edge_coords_by_existing_nodes(
 
     return segments
 
+def collect_all_intersection_coords(
+        edges: dict[str, dict]
+) -> set[tuple[float, float]]:
+
+    # 모든 엣지의 끝점 좌표를 키로 수집
+    endpoint_keys: set[tuple[float, float]] = set()
+    for edge in edges.values():
+        endpoint_keys.add(make_point_key(edge["coords"][0]))
+        endpoint_keys.add(make_point_key(edge["coords"][-1]))
+
+    # 어떤 엣지의 중간점이 다른 엣지의 끝점과 일치하면 교차점
+    intersection_coords: set[tuple[float, float]] = set()
+    for edge in edges.values():
+        for coord in edge["coords"][1:-1]:  # 중간 좌표만
+            key = make_point_key(coord)
+            if key in endpoint_keys:
+                intersection_coords.add(key)
+
+    return intersection_coords
+
 def split_edges_at_existing_nodes(
         edges: dict[str, dict],
         registry: NodeRegistry,
 ) -> tuple[dict[str, dict], dict]:
-    """
-    edge 내부 좌표가 기존 node 좌표를 지나가면 해당 지점에서 edge를 분할한다.
-    """
+
+    intersection_coords = collect_all_intersection_coords(edges)
+    for key in intersection_coords:
+        registry.get_or_create(list(key))
+
     new_edges: dict[str, dict] = {}
     next_edge_number = 1
 
