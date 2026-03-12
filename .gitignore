@@ -61,6 +61,10 @@ Thumbs.db
 /python/data/raw/forest/
 /python/data/raw/dem/
 
+### Python raw data (repo root safety) ###
+/python/data/raw/
+/python/data/raw/**
+
 ### Python outputs ###
 /python/output/temp/
 /python/output/logs/*.log
