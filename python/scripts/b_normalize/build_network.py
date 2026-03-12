@@ -491,10 +491,6 @@ def should_collapse_degree2_node(
     if edge1["edge_id"] == edge2["edge_id"]:
         return False
 
-    # 같은 trail이 아닐 경우 경계점일 가능성이 높으므로 유지
-    if edge1["trail_id"] != edge2["trail_id"]:
-        return False
-
     # 이동 방향 정책이 다르면 유지
     if edge1["is_bidirectional"] != edge2["is_bidirectional"]:
         return False
