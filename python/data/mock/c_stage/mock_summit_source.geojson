@@ -19,14 +19,126 @@
       "type": "Feature",
       "properties": {
         "summit_id": "S0002",
-        "name": "가상분기정상",
-        "elevation_m": 450.0,
-        "source": "mock",
+        "name": "삼성봉",
+        "elevation_m": 580.0,
+        "source": "공공데이터",
         "radius_m": 30
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [126.96595, 37.44528]
+        "coordinates": [126.96405, 37.44505]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "summit_id": "S0003",
+        "name": "깔딱고개전망대",
+        "elevation_m": 450.0,
+        "source": "공공데이터",
+        "radius_m": 50
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.96485, 37.44470]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "summit_id": "S0004",
+        "name": "백운대",
+        "elevation_m": 836.5,
+        "source": "공공데이터",
+        "radius_m": 30
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.97535, 37.66415]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "summit_id": "S0005",
+        "name": "인수봉",
+        "elevation_m": 810.5,
+        "source": "공공데이터",
+        "radius_m": 30
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.97885, 37.66385]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "summit_id": "S0006",
+        "name": "만경대",
+        "elevation_m": 799.5,
+        "source": "공공데이터",
+        "radius_m": 30
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.97235, 37.66285]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "summit_id": "S0007",
+        "name": "비봉",
+        "elevation_m": 560.0,
+        "source": "공공데이터",
+        "radius_m": 50
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.96905, 37.66505]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "summit_id": "S0008",
+        "name": "신선대",
+        "elevation_m": 726.0,
+        "source": "공공데이터",
+        "radius_m": 30
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [127.01285, 37.70225]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "summit_id": "S0009",
+        "name": "자운봉",
+        "elevation_m": 740.0,
+        "source": "공공데이터",
+        "radius_m": 30
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [127.01485, 37.70295]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "summit_id": "S0010",
+        "name": "만장봉",
+        "elevation_m": 718.0,
+        "source": "공공데이터",
+        "radius_m": 50
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [127.01365, 37.70015]
       }
     }
   ]
