@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from collections import defaultdict
+from collections import defaultdict, deque
 from pathlib import Path
 
 from pyproj import Geod
@@ -22,6 +22,12 @@ NODES_OUTPUT_PATH = OUTPUT_DIR / "trail_network_nodes.geojson"
 GEOD = Geod(ellps="WGS84")
 COORD_PRECISION = 7
 
+QA_MAX_EDGE_LENGTH_M = 50_000
+
+PRUNE_ISOLATED_EDGE_MIN_M = 20.0
+PRUNE_DANGLING_EDGE_MIN_M = 20.0
+
+PRUNE_MAX_ITERATIONS = 50
 
 # =========================================================
 # 2. 공통 함수
@@ -63,13 +69,11 @@ def make_point_key(coord: list[float]) -> tuple[float, float]:
     return c[0], c[1]
 
 
-def make_line_key(coords: list[list[float]]) -> tuple:
-    """
-    완전 동일 / 역방향 동일 선분을 같은 것으로 보기 위한 key
-    """
-    rounded_coords = tuple(make_point_key(c) for c in coords)
-    reversed_coords = tuple(reversed(rounded_coords))
-    return min(rounded_coords, reversed_coords)
+def make_line_key(coords: list[list[float]], is_bidirectional: bool = True) -> tuple:
+    rounded = tuple(make_point_key(c) for c in coords)
+    if is_bidirectional:
+        return min(rounded, tuple(reversed(rounded)))
+    return rounded
 
 
 def calculate_length_m(coords: list[list[float]]) -> float:
@@ -129,9 +133,33 @@ def get_or_create_node_id(
 
     return node_id, next_node_number + 1
 
+# =========================================================
+# 3. 노드 레지스트리
+# =========================================================
+
+class NodeRegistry:
+    def __init__(self) -> None:
+        self._key_to_id:   dict[tuple[float, float], str]  = {}
+        self._id_to_coord: dict[str, list[float]]           = {}
+        self._counter = 1
+
+    def get_or_create(self, coord: list[float]) -> str:
+        key = make_point_key(coord)
+        if key not in self._key_to_id:
+            node_id = f"N{self._counter:04d}"
+            self._counter += 1
+            self._key_to_id[key]       = node_id
+            self._id_to_coord[node_id] = list(key)
+        return self._key_to_id[key]
+
+    def coord(self, node_id: str) -> list[float]:
+        return self._id_to_coord[node_id]
+
+    def all_coords(self) -> dict[str, list[float]]:
+        return dict(self._id_to_coord)
 
 # =========================================================
-# 3. 입력 정규화
+# 4. 입력 정규화
 # =========================================================
 
 def normalize_input_features(data: dict) -> tuple[list[dict], dict]:
@@ -199,18 +227,16 @@ def normalize_input_features(data: dict) -> tuple[list[dict], dict]:
 
 
 # =========================================================
-# 4. 초기 그래프 생성
+# 5. 초기 그래프 생성
 # =========================================================
 
-def build_initial_graph(segments: list[dict]) -> tuple[dict[str, dict], dict[str, list[float]], dict]:
+def build_initial_graph(
+        segments: list[dict],
+        registry: NodeRegistry,
+) -> tuple[dict[str, dict], dict]:
+
     edges: dict[str, dict] = {}
-
-    node_ids_by_key: dict[tuple[float, float], str] = {}
-    node_coords_by_id: dict[str, list[float]] = {}
-
     seen_line_keys: set[tuple] = set()
-
-    next_node_number = 1
     next_edge_number = 1
 
     stats = {
@@ -224,7 +250,7 @@ def build_initial_graph(segments: list[dict]) -> tuple[dict[str, dict], dict[str
             stats["invalid_zero_length"] += 1
             continue
 
-        line_key = make_line_key(coords)
+        line_key = make_line_key(coords, segment["is_bidirectional"])
         if line_key in seen_line_keys:
             print(f"[중복 제거] trail_id={segment['trail_id']}, segment_order={segment['source_segment_order']}")
             stats["duplicate_removed_count"] += 1
@@ -237,15 +263,8 @@ def build_initial_graph(segments: list[dict]) -> tuple[dict[str, dict], dict[str
             stats["invalid_zero_length"] += 1
             continue
 
-        start_coord = coords[0]
-        end_coord = coords[-1]
-
-        start_node_id, next_node_number = get_or_create_node_id(
-            start_coord, node_ids_by_key, node_coords_by_id, next_node_number
-        )
-        end_node_id, next_node_number = get_or_create_node_id(
-            end_coord, node_ids_by_key, node_coords_by_id, next_node_number
-        )
+        start_node_id = registry.get_or_create(coords[0])
+        end_node_id   = registry.get_or_create(coords[-1])
 
         edge_id = f"E{next_edge_number:04d}"
         next_edge_number += 1
@@ -273,7 +292,7 @@ def build_initial_graph(segments: list[dict]) -> tuple[dict[str, dict], dict[str
             "raw_tags": segment["raw_tags"],
         }
 
-    return edges, node_coords_by_id, stats
+    return edges, stats
 
 
 def build_node_to_edges(edges: dict[str, dict]) -> dict[str, set[str]]:
@@ -297,7 +316,7 @@ def build_node_to_trails(edges: dict[str, dict]) -> dict[str, set[str]]:
 
 
 # =========================================================
-# 5. degree=2 병합 판정 / 병합
+# 6. degree=2 병합 판정 / 병합
 # =========================================================
 
 def should_collapse_degree2_node(
@@ -330,6 +349,8 @@ def should_collapse_degree2_node(
     # 핵심 속성이 다르면 경계점으로 보고 유지
     compare_fields = [
         "source",
+        "source_ref",
+        "name",
         "surface",
         "trail_type",
         "mountain_name",
@@ -356,6 +377,9 @@ def orient_edge_coords_toward_node(edge: dict, node_id: str) -> tuple[list[list[
     - 정렬된 좌표
     - 다른 쪽 노드 ID
     """
+    if edge["start_node_id"] == edge["end_node_id"]:
+        raise ValueError(f"self-loop 엣지 {edge['edge_id']}는 병합 불가.")
+
     if edge["end_node_id"] == node_id:
         return edge["coords"], edge["start_node_id"]
 
@@ -372,6 +396,9 @@ def orient_edge_coords_from_node(edge: dict, node_id: str) -> tuple[list[list[fl
     - 정렬된 좌표
     - 다른 쪽 노드 ID
     """
+    if edge["start_node_id"] == edge["end_node_id"]:
+        raise ValueError(f"self-loop 엣지 {edge['edge_id']}는 병합 불가.")
+
     if edge["start_node_id"] == node_id:
         return edge["coords"], edge["end_node_id"]
 
@@ -399,9 +426,12 @@ def merge_two_edges_through_node(
 
     distance_m = calculate_length_m(merged_coords)
 
-    merged_segment_orders = sorted(
-        edge1["source_segment_orders"] + edge2["source_segment_orders"]
-    )
+    raw_tags1 = edge1.get("raw_tags") or {}
+    raw_tags2 = edge2.get("raw_tags") or {}
+    if isinstance(raw_tags1, dict) and isinstance(raw_tags2, dict):
+        merged_raw_tags = {**raw_tags2, **raw_tags1}  # edge1 우선
+    else:
+        merged_raw_tags = raw_tags1 or raw_tags2
 
     return {
         "edge_id": new_edge_id,
@@ -409,7 +439,9 @@ def merge_two_edges_through_node(
         "start_node_id": other_start_node_id,
         "end_node_id": other_end_node_id,
         "distance_m": distance_m,
-        "source_segment_orders": merged_segment_orders,
+        "source_segment_orders": sorted(
+            edge1["source_segment_orders"] + edge2["source_segment_orders"]
+        ),
         "is_bidirectional": edge1["is_bidirectional"],
         "merge_status": "merged",
         "coords": merged_coords,
@@ -423,74 +455,143 @@ def merge_two_edges_through_node(
         "mountain_name": edge1.get("mountain_name"),
         "admin_region": edge1.get("admin_region"),
         "is_official": edge1.get("is_official"),
-        "raw_tags": edge1.get("raw_tags"),
+        "raw_tags": merged_raw_tags,
     }
 
 
 def collapse_pass_through_nodes(
-        edges: dict[str, dict],
-        node_coords_by_id: dict[str, list[float]]
+        edges: dict[str, dict]
 ) -> tuple[dict[str, dict], dict]:
     """
     degree=2 중 의미 없는 노드를 반복적으로 병합 제거
+    후보 노드들을 deque에 넣어 deque가 빌 때까지 반복하는 빙식으로 변경
     """
-    next_edge_number = 1
-    if edges:
-        next_edge_number = max(int(edge_id[1:]) for edge_id in edges.keys()) + 1
+    node_to_edges = build_node_to_edges(edges)
 
-    collapsed_node_count = 0
-    merged_edge_count = 0
+    # 초기 degree=2 후보
+    queue: deque[str] = deque(
+        node_id for node_id, eids in node_to_edges.items()
+        if len(eids) == 2
+    )
+    in_queue: set[str] = set(queue)
 
-    while True:
-        node_to_edges = build_node_to_edges(edges)
-        changed = False
-
-        for node_id in sorted(node_to_edges.keys()):
-            connected_edge_ids = sorted(list(node_to_edges[node_id]))
-
-            if not should_collapse_degree2_node(node_id, connected_edge_ids, edges):
-                continue
-
-            edge1 = edges[connected_edge_ids[0]]
-            edge2 = edges[connected_edge_ids[1]]
-
-            new_edge_id = f"E{next_edge_number:04d}"
-            next_edge_number += 1
-
-            merged_edge = merge_two_edges_through_node(
-                node_id=node_id,
-                edge1=edge1,
-                edge2=edge2,
-                new_edge_id=new_edge_id,
-            )
-
-            # 기존 edge 제거 후 새 edge 추가
-            del edges[edge1["edge_id"]]
-            del edges[edge2["edge_id"]]
-            edges[new_edge_id] = merged_edge
-
-            collapsed_node_count += 1
-            merged_edge_count += 1
-            changed = True
-            break
-
-        if not changed:
-            break
-
+    next_edge_num = (
+        max(int(eid[1:]) for eid in edges) + 1 if edges else 1
+    )
     stats = {
-        "collapsed_degree2_node_count": collapsed_node_count,
-        "merged_edge_count": merged_edge_count,
+        "collapsed_degree2_node_count": 0,
+        "merged_edge_count":            0,
     }
+
+    while queue:
+        node_id = queue.popleft()
+        in_queue.discard(node_id)
+
+        connected = sorted(node_to_edges.get(node_id, set()))
+
+        # 실제 병합 조건 재확인 (다른 병합으로 상황이 바뀌었을 수 있음)
+        if not should_collapse_degree2_node(node_id, connected, edges):
+            continue
+
+        e1 = edges[connected[0]]
+        e2 = edges[connected[1]]
+
+        new_edge_id = f"E{next_edge_num:04d}"
+        next_edge_num += 1
+
+        merged = merge_two_edges_through_node (node_id, e1, e2, new_edge_id)
+
+        # 기존 엣지 제거
+        for old_eid in [e1["edge_id"], e2["edge_id"]]:
+            del edges[old_eid]
+            for nid in [e1["start_node_id"], e1["end_node_id"],
+                        e2["start_node_id"], e2["end_node_id"]]:
+                node_to_edges.get(nid, set()).discard(old_eid)
+
+        # 새 엣지 등록
+        edges[new_edge_id] = merged
+        node_to_edges.setdefault(merged["start_node_id"], set()).add(new_edge_id)
+        node_to_edges.setdefault(merged["end_node_id"],   set()).add(new_edge_id)
+
+        # 병합된 노드 제거
+        node_to_edges.pop(node_id, None)
+
+        stats["collapsed_degree2_node_count"] += 1
+        stats["merged_edge_count"]            += 1
+
+        # 새 엣지 양 끝을 재검사 후보로 추가
+        for neighbor in [merged["start_node_id"], merged["end_node_id"]]:
+            if neighbor not in in_queue:
+                queue.append(neighbor)
+                in_queue.add(neighbor)
+
+    return edges, stats
+
+# =========================================================
+# 7. Dangling 엣지 제거
+# =========================================================
+
+def prune_dangling_edges(
+        edges: dict[str, dict],
+        isolated_min_m: float = PRUNE_ISOLATED_EDGE_MIN_M,
+        dangling_min_m: float = PRUNE_DANGLING_EDGE_MIN_M,
+        max_iterations: int   = PRUNE_MAX_ITERATIONS,
+) -> tuple[dict[str, dict], dict]:
+    """
+    네트워크와 연결되지 않은 짧은 엣지를 제거한다.
+    완전 고립, 막다른 길
+    """
+    stats = {
+        "isolated_removed_count": 0,
+        "dangling_removed_count": 0,
+        "iterations":             0,
+    }
+
+    # ── 케이스 1: 완전 고립 엣지 (1회)
+    node_to_edges = build_node_to_edges(edges)
+    to_remove: list[str] = []
+
+    for edge_id, edge in edges.items():
+        s_deg = len(node_to_edges.get(edge["start_node_id"], set()))
+        e_deg = len(node_to_edges.get(edge["end_node_id"],   set()))
+        if s_deg == 1 and e_deg == 1 and edge["distance_m"] < isolated_min_m:
+            to_remove.append(edge_id)
+
+    for edge_id in to_remove:
+        del edges[edge_id]
+    stats["isolated_removed_count"] = len(to_remove)
+
+    # ── 케이스 2: 막다른 엣지 (반복)
+    for _ in range(max_iterations):
+        stats["iterations"] += 1
+        node_to_edges = build_node_to_edges(edges)
+        to_remove = []
+
+        for edge_id, edge in edges.items():
+            s_deg = len(node_to_edges.get(edge["start_node_id"], set()))
+            e_deg = len(node_to_edges.get(edge["end_node_id"],   set()))
+            # 한쪽만 degree=1 이고 기준 거리 미만
+            is_dangling = (s_deg == 1) != (e_deg == 1)  # XOR
+            if is_dangling and edge["distance_m"] < dangling_min_m:
+                to_remove.append(edge_id)
+
+        if not to_remove:
+            break
+
+        for edge_id in to_remove:
+            del edges[edge_id]
+        stats["dangling_removed_count"] += len(to_remove)
+
     return edges, stats
 
 
 # =========================================================
-# 6. 최종 output 재구성
+# 8. 최종 output 재구성
 # =========================================================
 
 def build_final_output_features(
         edges: dict[str, dict],
-        node_coords_by_id: dict[str, list[float]]
+        registry: NodeRegistry
 ) -> tuple[list[dict], list[dict], dict]:
     node_to_edges = build_node_to_edges(edges)
     node_to_trails = build_node_to_trails(edges)
@@ -549,13 +650,18 @@ def build_final_output_features(
             remaining_degree2_count += 1
         else:
             # degree == 1
-            if node_start_count[node_id] > 0 and node_end_count[node_id] == 0:
+            connected_edge = edges[next(iter(node_to_edges[node_id]))]
+
+            if connected_edge["is_bidirectional"]:
+                # 양방향 엣지는 방향성이 없으므로 start/end를 명확히 구분할 수 없음.
+                # 규약상 endpoint가 없으므로 기존 원칙대로 start로 통일.
                 node_type = "start"
-            elif node_end_count[node_id] > 0 and node_start_count[node_id] == 0:
-                node_type = "end"
             else:
-                # 양방향/병합 등으로 애매하면 start로 통일
-                node_type = "start"
+                # 단방향 엣지는 실제 연결 방향으로 start/end 판별
+                if connected_edge["start_node_id"] == node_id:
+                    node_type = "start"
+                else:
+                    node_type = "end"
 
         node_features.append({
             "type": "Feature",
@@ -567,7 +673,7 @@ def build_final_output_features(
             },
             "geometry": {
                 "type": "Point",
-                "coordinates": node_coords_by_id[node_id]
+                "coordinates": registry.coord(node_id)
             }
         })
 
@@ -581,31 +687,53 @@ def build_final_output_features(
 
 
 # =========================================================
-# 7. QA
+# 9. QA
 # =========================================================
 
-def run_basic_qa(edge_features: list[dict], node_features: list[dict]) -> None:
+def run_basic_qa(edge_features: list[dict], node_features: list[dict], registry: NodeRegistry) -> None:
     node_ids = {feature["properties"]["node_id"] for feature in node_features}
 
     missing_node_ref_count = 0
     non_positive_distance_count = 0
+    self_loop_count = 0
+    coord_mismatch_count = 0
 
     for edge_feature in edge_features:
         props = edge_feature["properties"]
+        coords = edge_feature["geometry"]["coordinates"]
+
+        start_node_id = props["start_node_id"]
+        end_node_id = props["end_node_id"]
 
         if props["start_node_id"] not in node_ids or props["end_node_id"] not in node_ids:
             missing_node_ref_count += 1
 
         if props["distance_m"] <= 0:
             non_positive_distance_count += 1
+        if start_node_id == end_node_id:
+            self_loop_count += 1
+
+        try:
+            expected_start = registry.coord(start_node_id)
+            expected_end = registry.coord(end_node_id)
+
+            if (
+                    make_point_key(coords[0]) != make_point_key(expected_start)
+                    or make_point_key(coords[-1]) != make_point_key(expected_end)
+            ):
+                coord_mismatch_count += 1
+        except KeyError:
+            # 이미 node 참조 누락으로 집계된 경우
+            pass
 
     print("----- QA 결과 -----")
     print(f"node 참조 누락 edge 수: {missing_node_ref_count}")
     print(f"distance_m <= 0 edge 수: {non_positive_distance_count}")
-
+    print(f"self-loop edge 수: {self_loop_count}")
+    print(f"coords-노드 좌표 불일치 edge 수: {coord_mismatch_count}")
 
 # =========================================================
-# 8. 실행
+# 10. 실행
 # =========================================================
 
 def build_network() -> None:
@@ -613,27 +741,39 @@ def build_network() -> None:
 
     normalized_segments, normalize_stats = normalize_input_features(data)
     print(f"입력 feature 수: {normalize_stats['input_feature_count']}")
+    print(f"필수값 누락 제거: {normalize_stats['invalid_missing_required']}")
+    print(f"geometry 오류 제거: {normalize_stats['invalid_geometry']}")
+    print(f"좌표 부족 제거: {normalize_stats['invalid_short_coords']}")
     print(f"정규화된 라인 수: {len(normalized_segments)}")
 
-    edges, node_coords_by_id, initial_stats = build_initial_graph(normalized_segments)
+    registry = NodeRegistry()
+    edges, initial_stats = build_initial_graph(normalized_segments, registry)
+    initial_node_count = len(build_node_to_edges(edges))
 
     print("----- 초기 그래프 생성 완료 -----")
     print(f"초기 edge 수: {len(edges)}")
-    print(f"초기 node 수: {len(build_node_to_edges(edges))}")
+    print(f"초기 node 수: {initial_node_count}")
     print(f"중복 제거 수: {initial_stats['duplicate_removed_count']}")
+    print(f"거리 0 제거 수: {initial_stats['invalid_zero_length']}")
 
-    edges, collapse_stats = collapse_pass_through_nodes(edges, node_coords_by_id)
+    edges, collapse_stats = collapse_pass_through_nodes(edges)
 
     print("----- degree=2 병합 완료 -----")
     print(f"collapse된 degree=2 node 수: {collapse_stats['collapsed_degree2_node_count']}")
     print(f"병합된 edge 생성 수: {collapse_stats['merged_edge_count']}")
 
-    edge_features, node_features, final_stats = build_final_output_features(edges, node_coords_by_id)
+    edges, prune_stats = prune_dangling_edges(edges)
+    print(f"\n----- Dangling 엣지 제거 완료 (기준: 고립 {PRUNE_ISOLATED_EDGE_MIN_M}m / 막다른 {PRUNE_DANGLING_EDGE_MIN_M}m) -----")
+    print(f"완전 고립 엣지 제거 수: {prune_stats['isolated_removed_count']}")
+    print(f"막다른 엣지 제거 수: {prune_stats['dangling_removed_count']}")
+    print(f"반복 횟수: {prune_stats['iterations']}")
+
+    edge_features, node_features, final_stats = build_final_output_features(edges, registry)
 
     write_geojson(EDGES_OUTPUT_PATH, edge_features)
     write_geojson(NODES_OUTPUT_PATH, node_features)
 
-    run_basic_qa(edge_features, node_features)
+    run_basic_qa(edge_features, node_features, registry)
 
     print("----- 최종 완료 -----")
     print(f"최종 edge 수: {final_stats['final_edge_count']}")
