@@ -1,26 +1,35 @@
 {
   "type": "FeatureCollection",
-  "name": "standard_trail",
-  "crs_note": "WGS84 EPSG:4326",
   "features": [
     {
       "type": "Feature",
       "properties": {
         "trail_id": "T0001",
-        "source": "mock",
-        "mountain_name": "관악산",
-        "trail_name": "입구-갈림길",
-        "segment_type": "trail",
+        "name": "남측입구-첫구간",
+        "source": "OSM",
+        "source_ref": "way/900001",
+        "length_m": 258.6,
         "surface": "dirt",
-        "access": "public",
-        "is_official": true
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {
+          "highway": "path",
+          "sac_scale": "mountain_hiking"
+        }
       },
       "geometry": {
         "type": "LineString",
         "coordinates": [
-          [126.96510, 37.44521],
-          [126.96530, 37.44555],
-          [126.96545, 37.44580]
+          [
+            126.959,
+            37.439
+          ],
+          [
+            126.9605,
+            37.441
+          ]
         ]
       }
     },
@@ -28,20 +37,30 @@
       "type": "Feature",
       "properties": {
         "trail_id": "T0002",
-        "source": "mock",
+        "name": "남측입구-주능선",
+        "source": "OSM",
+        "source_ref": "way/900002",
+        "length_m": 212.9,
+        "surface": "dirt",
+        "trail_type": "trail",
         "mountain_name": "관악산",
-        "trail_name": "갈림길-정상",
-        "segment_type": "trail",
-        "surface": "rock",
-        "access": "public",
-        "is_official": true
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {
+          "highway": "path"
+        }
       },
       "geometry": {
         "type": "LineString",
         "coordinates": [
-          [126.96545, 37.44580],
-          [126.96570, 37.44615],
-          [126.96600, 37.44655]
+          [
+            126.9605,
+            37.441
+          ],
+          [
+            126.962,
+            37.4425
+          ]
         ]
       }
     },
@@ -49,20 +68,30 @@
       "type": "Feature",
       "properties": {
         "trail_id": "T0003",
-        "source": "mock",
-        "mountain_name": "관악산",
-        "trail_name": "갈림길-쉼터",
-        "segment_type": "trail",
+        "name": "주능선 오름구간1",
+        "source": "공공데이터",
+        "source_ref": "trail/1003",
+        "length_m": 212.9,
         "surface": "dirt",
-        "access": "public",
-        "is_official": true
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {
+          "route": "hiking"
+        }
       },
       "geometry": {
         "type": "LineString",
         "coordinates": [
-          [126.96545, 37.44580],
-          [126.96595, 37.44592],
-          [126.96630, 37.44605]
+          [
+            126.962,
+            37.4425
+          ],
+          [
+            126.9635,
+            37.444
+          ]
         ]
       }
     },
@@ -70,20 +99,31 @@
       "type": "Feature",
       "properties": {
         "trail_id": "T0004",
-        "source": "mock",
+        "name": "주능선 오름구간2",
+        "source": "공공데이터",
+        "source_ref": "trail/1004",
+        "length_m": 212.9,
+        "surface": "stairs",
+        "trail_type": "trail",
         "mountain_name": "관악산",
-        "trail_name": "정상-갈림길 역방향중복",
-        "segment_type": "trail",
-        "surface": "rock",
-        "access": "public",
-        "is_official": true
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {
+          "route": "hiking",
+          "surface": "stairs"
+        }
       },
       "geometry": {
         "type": "LineString",
         "coordinates": [
-          [126.96600, 37.44655],
-          [126.96570, 37.44615],
-          [126.96545, 37.44580]
+          [
+            126.9635,
+            37.444
+          ],
+          [
+            126.965,
+            37.4455
+          ]
         ]
       }
     },
@@ -91,25 +131,30 @@
       "type": "Feature",
       "properties": {
         "trail_id": "T0005",
-        "source": "mock",
+        "name": "정상 접근구간",
+        "source": "OSM",
+        "source_ref": "way/900005",
+        "length_m": 283.9,
+        "surface": "rock",
+        "trail_type": "trail",
         "mountain_name": "관악산",
-        "trail_name": "쉼터-능선 MultiLine",
-        "segment_type": "trail",
-        "surface": "mixed",
-        "access": "public",
-        "is_official": false
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {
+          "highway": "path",
+          "sac_scale": "demanding_mountain_hiking"
+        }
       },
       "geometry": {
-        "type": "MultiLineString",
+        "type": "LineString",
         "coordinates": [
           [
-            [126.96630, 37.44605],
-            [126.96655, 37.44622]
+            126.965,
+            37.4455
           ],
           [
-            [126.96655, 37.44622],
-            [126.96690, 37.44645],
-            [126.96715, 37.44662]
+            126.967,
+            37.4475
           ]
         ]
       }
@@ -118,19 +163,30 @@
       "type": "Feature",
       "properties": {
         "trail_id": "T0006",
-        "source": "mock",
+        "name": "정상 접근구간2",
+        "source": "OSM",
+        "source_ref": "way/900006",
+        "length_m": 212.9,
+        "surface": "rock",
+        "trail_type": "trail",
         "mountain_name": "관악산",
-        "trail_name": "쉼터-계단구간",
-        "segment_type": "stairs",
-        "surface": "deck",
-        "access": "public",
-        "is_official": true
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {
+          "highway": "path"
+        }
       },
       "geometry": {
         "type": "LineString",
         "coordinates": [
-          [126.96630, 37.44605],
-          [126.96638, 37.44614]
+          [
+            126.967,
+            37.4475
+          ],
+          [
+            126.9685,
+            37.449
+          ]
         ]
       }
     },
@@ -138,19 +194,28 @@
       "type": "Feature",
       "properties": {
         "trail_id": "T0007",
-        "source": "mock",
-        "mountain_name": "관악산",
-        "trail_name": "고립구간",
-        "segment_type": "trail",
+        "name": "서측입구-완만구간1",
+        "source": "공공데이터",
+        "source_ref": "trail/1007",
+        "length_m": 417.8,
         "surface": "dirt",
-        "access": "public",
-        "is_official": false
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
       },
       "geometry": {
         "type": "LineString",
         "coordinates": [
-          [126.96980, 37.44860],
-          [126.97015, 37.44888]
+          [
+            126.952,
+            37.445
+          ],
+          [
+            126.956,
+            37.443
+          ]
         ]
       }
     },
@@ -158,20 +223,927 @@
       "type": "Feature",
       "properties": {
         "trail_id": "T0008",
-        "source": "mock",
+        "name": "서측입구-완만구간2",
+        "source": "공공데이터",
+        "source_ref": "trail/1008",
+        "length_m": 212.9,
+        "surface": "dirt",
+        "trail_type": "trail",
         "mountain_name": "관악산",
-        "trail_name": "입구 옆 도로",
-        "segment_type": "road",
-        "surface": "paved",
-        "access": "public",
-        "is_official": false
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
       },
       "geometry": {
         "type": "LineString",
         "coordinates": [
-          [126.96485, 37.44510],
-          [126.96510, 37.44521],
-          [126.96528, 37.44528]
+          [
+            126.956,
+            37.443
+          ],
+          [
+            126.9575,
+            37.4445
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0009",
+        "name": "서측입구-합류구간",
+        "source": "공공데이터",
+        "source_ref": "trail/1009",
+        "length_m": 455.9,
+        "surface": "deck",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {
+          "surface": "boardwalk"
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.9575,
+            37.4445
+          ],
+          [
+            126.962,
+            37.4425
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0010",
+        "name": "능선우회구간1",
+        "source": "OSM",
+        "source_ref": "way/900010",
+        "length_m": 447.0,
+        "surface": "rock",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.962,
+            37.4425
+          ],
+          [
+            126.9595,
+            37.446
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0011",
+        "name": "능선우회구간2",
+        "source": "OSM",
+        "source_ref": "way/900011",
+        "length_m": 243.0,
+        "surface": "rock",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.9595,
+            37.446
+          ],
+          [
+            126.9615,
+            37.4475
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0012",
+        "name": "능선우회구간3",
+        "source": "OSM",
+        "source_ref": "way/900012",
+        "length_m": 247.5,
+        "surface": "rock",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.9615,
+            37.4475
+          ],
+          [
+            126.964,
+            37.4485
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0013",
+        "name": "북사면정상구간1",
+        "source": "공공데이터",
+        "source_ref": "trail/1013",
+        "length_m": 243.0,
+        "surface": "dirt",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.964,
+            37.4485
+          ],
+          [
+            126.966,
+            37.45
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0014",
+        "name": "북사면정상구간2",
+        "source": "공공데이터",
+        "source_ref": "trail/1014",
+        "length_m": 313.3,
+        "surface": "dirt",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.966,
+            37.45
+          ],
+          [
+            126.969,
+            37.4515
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0015",
+        "name": "북능선-정상연결",
+        "source": "OSM",
+        "source_ref": "way/900015",
+        "length_m": 402.0,
+        "surface": "rock",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.964,
+            37.4485
+          ],
+          [
+            126.9685,
+            37.449
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0016",
+        "name": "동측입구-도로연결",
+        "source": "공공데이터",
+        "source_ref": "trail/1016",
+        "length_m": 291.2,
+        "surface": "paved",
+        "trail_type": "road",
+        "mountain_name": "관악산",
+        "admin_region": "서울 금천구",
+        "is_official": true,
+        "raw_tags": {
+          "highway": "service"
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.9695,
+            37.4415
+          ],
+          [
+            126.9705,
+            37.444
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0017",
+        "name": "동측입구-계단구간",
+        "source": "공공데이터",
+        "source_ref": "trail/1017",
+        "length_m": 413.4,
+        "surface": "stairs",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 금천구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.9705,
+            37.444
+          ],
+          [
+            126.966,
+            37.443
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0018",
+        "name": "동측입구-능선합류",
+        "source": "OSM",
+        "source_ref": "way/900018",
+        "length_m": 291.2,
+        "surface": "dirt",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 금천구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.966,
+            37.443
+          ],
+          [
+            126.965,
+            37.4455
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0019",
+        "name": "동측지선-쉼터구간1",
+        "source": "OSM",
+        "source_ref": "way/900019",
+        "length_m": 212.9,
+        "surface": "dirt",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 금천구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.966,
+            37.443
+          ],
+          [
+            126.9675,
+            37.4445
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0020",
+        "name": "동측지선-쉼터구간2",
+        "source": "OSM",
+        "source_ref": "way/900020",
+        "length_m": 335.9,
+        "surface": "deck",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 금천구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.9675,
+            37.4445
+          ],
+          [
+            126.967,
+            37.4475
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0021",
+        "name": "횡단샛길",
+        "source": "OSM",
+        "source_ref": "way/900021",
+        "length_m": 309.7,
+        "surface": "dirt",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": false,
+        "raw_tags": {
+          "informal": "yes"
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.963,
+            37.4465
+          ],
+          [
+            126.9665,
+            37.4465
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0022",
+        "name": "북능선 연속구간",
+        "source": "공공데이터",
+        "source_ref": "trail/1022",
+        "length_m": 286.5,
+        "surface": "rock",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "MultiLineString",
+        "coordinates": [
+          [
+            [
+              126.965,
+              37.4455
+            ],
+            [
+              126.9658,
+              37.4464
+            ],
+            [
+              126.9663,
+              37.4469
+            ]
+          ],
+          [
+            [
+              126.9663,
+              37.4469
+            ],
+            [
+              126.9668,
+              37.4472
+            ],
+            [
+              126.967,
+              37.4475
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0023",
+        "name": "서측입구-합류구간 중복",
+        "source": "공공데이터",
+        "source_ref": "trail/1023",
+        "length_m": 455.9,
+        "surface": "deck",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.9575,
+            37.4445
+          ],
+          [
+            126.962,
+            37.4425
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0024",
+        "name": "정상 접근구간 역방향중복",
+        "source": "OSM",
+        "source_ref": "way/900024",
+        "length_m": 283.9,
+        "surface": "rock",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.967,
+            37.4475
+          ],
+          [
+            126.965,
+            37.4455
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0025",
+        "name": "남측입구-주능선 유사중복",
+        "source": "OSM",
+        "source_ref": "way/900025",
+        "length_m": 212.9,
+        "surface": "dirt",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.9605,
+            37.441
+          ],
+          [
+            126.9612,
+            37.4417
+          ],
+          [
+            126.962,
+            37.4425
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0026",
+        "name": "행정구역경계구간1",
+        "source": "공공데이터",
+        "source_ref": "trail/1026",
+        "length_m": 300.9,
+        "surface": "dirt",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.965,
+            37.4455
+          ],
+          [
+            126.9657,
+            37.4448
+          ],
+          [
+            126.966,
+            37.443
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0027",
+        "name": "행정구역경계구간2",
+        "source": "공공데이터",
+        "source_ref": "trail/1027",
+        "length_m": 201.5,
+        "surface": "dirt",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 금천구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.9657,
+            37.4448
+          ],
+          [
+            126.966,
+            37.443
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0028",
+        "name": "비공식샛길1",
+        "source": "OSM",
+        "source_ref": "way/900028",
+        "length_m": 243.1,
+        "surface": "rock",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": false,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.962,
+            37.4425
+          ],
+          [
+            126.963,
+            37.4432
+          ],
+          [
+            126.964,
+            37.444
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0029",
+        "name": "비공식샛길2",
+        "source": "OSM",
+        "source_ref": "way/900029",
+        "length_m": 188.5,
+        "surface": "rock",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": false,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.964,
+            37.444
+          ],
+          [
+            126.965,
+            37.4455
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0030",
+        "name": "고립구간1",
+        "source": "OSM",
+        "source_ref": "way/900030",
+        "length_m": 212.9,
+        "surface": "dirt",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": false,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.974,
+            37.455
+          ],
+          [
+            126.9755,
+            37.4565
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0031",
+        "name": "북측환형구간1",
+        "source": "OSM",
+        "source_ref": "way/900031",
+        "length_m": 318.6,
+        "surface": "rock",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.966,
+            37.45
+          ],
+          [
+            126.967,
+            37.4508
+          ],
+          [
+            126.969,
+            37.4515
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0032",
+        "name": "북측환형구간2",
+        "source": "OSM",
+        "source_ref": "way/900032",
+        "length_m": 326.0,
+        "surface": "rock",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.969,
+            37.4515
+          ],
+          [
+            126.9678,
+            37.4502
+          ],
+          [
+            126.9685,
+            37.449
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0033",
+        "name": "짧은계단구간",
+        "source": "공공데이터",
+        "source_ref": "trail/1033",
+        "length_m": 14.2,
+        "surface": "stairs",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.962,
+            37.4425
+          ],
+          [
+            126.9621,
+            37.4426
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0034",
+        "name": "능선횡단1",
+        "source": "OSM",
+        "source_ref": "way/900034",
+        "length_m": 247.5,
+        "surface": "rock",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.9615,
+            37.4475
+          ],
+          [
+            126.9625,
+            37.4479
+          ],
+          [
+            126.964,
+            37.4485
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0035",
+        "name": "능선횡단2",
+        "source": "OSM",
+        "source_ref": "way/900035",
+        "length_m": 184.0,
+        "surface": "dirt",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": false,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.9615,
+            37.4475
+          ],
+          [
+            126.962,
+            37.4468
+          ],
+          [
+            126.963,
+            37.4465
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0036",
+        "name": "남측우회1",
+        "source": "공공데이터",
+        "source_ref": "trail/1036",
+        "length_m": 179.2,
+        "surface": "dirt",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.959,
+            37.439
+          ],
+          [
+            126.9597,
+            37.4398
+          ],
+          [
+            126.9602,
+            37.4403
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "trail_id": "T0037",
+        "name": "남측우회2",
+        "source": "공공데이터",
+        "source_ref": "trail/1037",
+        "length_m": 291.5,
+        "surface": "dirt",
+        "trail_type": "trail",
+        "mountain_name": "관악산",
+        "admin_region": "서울 관악구",
+        "is_official": true,
+        "raw_tags": {}
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.9602,
+            37.4403
+          ],
+          [
+            126.962,
+            37.4425
+          ]
         ]
       }
     }
