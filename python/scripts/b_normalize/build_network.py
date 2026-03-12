@@ -90,7 +90,6 @@ def calculate_length_m(coords: list[list[float]]) -> float:
     length = GEOD.line_length(lons, lats)
     return round(abs(length), 1)
 
-
 def split_to_lines(geometry: dict | None) -> list[list[list[float]]]:
     """
     geometry를 LineString 목록 형태로 통일해서 반환
@@ -108,6 +107,96 @@ def split_to_lines(geometry: dict | None) -> list[list[list[float]]]:
         return coords
 
     return []
+
+def split_edge_coords_by_existing_nodes(
+        coords: list[list[float]],
+        registry: NodeRegistry,
+) -> list[list[list[float]]]:
+
+    if len(coords) < 2:
+        return []
+
+    split_indices = [0]
+
+    for i in range(1, len(coords) - 1):
+        node_id = registry.get_node_id_by_coord(coords[i])
+        if node_id is not None:
+            split_indices.append(i)
+
+    split_indices.append(len(coords) - 1)
+
+    segments: list[list[list[float]]] = []
+    for start_idx, end_idx in zip(split_indices, split_indices[1:]):
+        part = coords[start_idx:end_idx + 1]
+        part = dedupe_consecutive_coords(part)
+        if len(part) >= 2:
+            segments.append(part)
+
+    return segments
+
+def split_edges_at_existing_nodes(
+        edges: dict[str, dict],
+        registry: NodeRegistry,
+) -> tuple[dict[str, dict], dict]:
+    """
+    edge 내부 좌표가 기존 node 좌표를 지나가면 해당 지점에서 edge를 분할한다.
+    """
+    new_edges: dict[str, dict] = {}
+    next_edge_number = 1
+
+    split_source_edge_count = 0
+    created_split_edge_count = 0
+
+    for edge_id in sorted(edges.keys()):
+        edge = edges[edge_id]
+        coords_parts = split_edge_coords_by_existing_nodes(edge["coords"], registry)
+
+        if not coords_parts:
+            continue
+
+        if len(coords_parts) > 1:
+            split_source_edge_count += 1
+
+        for part_coords in coords_parts:
+            distance_m = calculate_length_m(part_coords)
+            if distance_m <= 0:
+                continue
+
+            start_node_id = registry.get_or_create(part_coords[0])
+            end_node_id = registry.get_or_create(part_coords[-1])
+
+            new_edge_id = f"E{next_edge_number:04d}"
+            next_edge_number += 1
+
+            new_edges[new_edge_id] = {
+                "edge_id": new_edge_id,
+                "trail_id": edge["trail_id"],
+                "start_node_id": start_node_id,
+                "end_node_id": end_node_id,
+                "distance_m": distance_m,
+                "source_segment_orders": list(edge["source_segment_orders"]),
+                "is_bidirectional": edge["is_bidirectional"],
+                "merge_status": edge["merge_status"],
+                "coords": part_coords,
+
+                # 내부 비교용 메타데이터 유지
+                "source": edge.get("source"),
+                "source_ref": edge.get("source_ref"),
+                "name": edge.get("name"),
+                "surface": edge.get("surface"),
+                "trail_type": edge.get("trail_type"),
+                "mountain_name": edge.get("mountain_name"),
+                "admin_region": edge.get("admin_region"),
+                "is_official": edge.get("is_official"),
+                "raw_tags": edge.get("raw_tags"),
+            }
+            created_split_edge_count += 1
+
+    stats = {
+        "split_source_edge_count": split_source_edge_count,
+        "created_split_edge_count": created_split_edge_count,
+    }
+    return new_edges, stats
 
 
 def dedupe_consecutive_coords(coords: list[list[float]]) -> list[list[float]]:
@@ -164,12 +253,16 @@ class NodeRegistry:
         if key not in self._key_to_id:
             node_id = f"N{self._counter:04d}"
             self._counter += 1
-            self._key_to_id[key]       = node_id
+            self._key_to_id[key] = node_id
             self._id_to_coord[node_id] = list(key)
         return self._key_to_id[key]
 
     def coord(self, node_id: str) -> list[float]:
         return self._id_to_coord[node_id]
+
+    def get_node_id_by_coord(self, coord: list[float]) -> str | None:
+        key = make_point_key(coord)
+        return self._key_to_id.get(key)
 
 # =========================================================
 # 4. 입력 정규화
@@ -784,6 +877,12 @@ def build_network() -> None:
     print(f"초기 node 수: {initial_node_count}")
     print(f"중복 제거 수: {initial_stats['duplicate_removed_count']}")
     print(f"거리 0 제거 수: {initial_stats['invalid_zero_length']}")
+
+    edges, split_stats = split_edges_at_existing_nodes(edges, registry)
+
+    print("----- 기존 node 기준 edge 분할 완료 -----")
+    print(f"분할 대상 원본 edge 수: {split_stats['split_source_edge_count']}")
+    print(f"분할 후 생성된 edge 수: {split_stats['created_split_edge_count']}")
 
     edges, collapse_stats = collapse_pass_through_nodes(edges)
 
