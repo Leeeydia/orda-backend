@@ -22,8 +22,6 @@ NODES_OUTPUT_PATH = OUTPUT_DIR / "trail_network_nodes.geojson"
 GEOD = Geod(ellps="WGS84")
 COORD_PRECISION = 7
 
-QA_MAX_EDGE_LENGTH_M = 50_000
-
 PRUNE_ISOLATED_EDGE_MIN_M = 20.0
 PRUNE_DANGLING_EDGE_MIN_M = 20.0
 
@@ -115,24 +113,6 @@ def dedupe_consecutive_coords(coords: list[list[float]]) -> list[list[float]]:
             result.append(coord)
     return result
 
-
-def get_or_create_node_id(
-        coord: list[float],
-        node_ids_by_key: dict[tuple[float, float], str],
-        node_coords_by_id: dict[str, list[float]],
-        next_node_number: int
-) -> tuple[str, int]:
-    key = make_point_key(coord)
-
-    if key in node_ids_by_key:
-        return node_ids_by_key[key], next_node_number
-
-    node_id = f"N{next_node_number:04d}"
-    node_ids_by_key[key] = node_id
-    node_coords_by_id[node_id] = [key[0], key[1]]
-
-    return node_id, next_node_number + 1
-
 # =========================================================
 # 3. 노드 레지스트리
 # =========================================================
@@ -154,9 +134,6 @@ class NodeRegistry:
 
     def coord(self, node_id: str) -> list[float]:
         return self._id_to_coord[node_id]
-
-    def all_coords(self) -> dict[str, list[float]]:
-        return dict(self._id_to_coord)
 
 # =========================================================
 # 4. 입력 정규화
@@ -349,8 +326,6 @@ def should_collapse_degree2_node(
     # 핵심 속성이 다르면 경계점으로 보고 유지
     compare_fields = [
         "source",
-        "source_ref",
-        "name",
         "surface",
         "trail_type",
         "mountain_name",
@@ -464,7 +439,7 @@ def collapse_pass_through_nodes(
 ) -> tuple[dict[str, dict], dict]:
     """
     degree=2 중 의미 없는 노드를 반복적으로 병합 제거
-    후보 노드들을 deque에 넣어 deque가 빌 때까지 반복하는 빙식으로 변경
+    후보 노드들을 deque에 넣어 deque가 빌 때까지 반복하는 방식으로 변경
     """
     node_to_edges = build_node_to_edges(edges)
 
@@ -499,7 +474,7 @@ def collapse_pass_through_nodes(
         new_edge_id = f"E{next_edge_num:04d}"
         next_edge_num += 1
 
-        merged = merge_two_edges_through_node (node_id, e1, e2, new_edge_id)
+        merged = merge_two_edges_through_node(node_id, e1, e2, new_edge_id)
 
         # 기존 엣지 제거
         for old_eid in [e1["edge_id"], e2["edge_id"]]:
@@ -595,13 +570,6 @@ def build_final_output_features(
 ) -> tuple[list[dict], list[dict], dict]:
     node_to_edges = build_node_to_edges(edges)
     node_to_trails = build_node_to_trails(edges)
-
-    node_start_count: defaultdict[str, int] = defaultdict(int)
-    node_end_count: defaultdict[str, int] = defaultdict(int)
-
-    for edge in edges.values():
-        node_start_count[edge["start_node_id"]] += 1
-        node_end_count[edge["end_node_id"]] += 1
 
     # 최종 edge feature
     edge_features: list[dict] = []
