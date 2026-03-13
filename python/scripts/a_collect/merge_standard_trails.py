@@ -11,15 +11,6 @@ from pyproj import Transformer
 from shapely.geometry import shape
 from shapely.ops import transform, unary_union
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-
-PUBLIC_PATH = BASE_DIR / "data" / "interim" / "a_output" / "standard_public_trail.geojson"
-OSM_PATH = BASE_DIR / "data" / "interim" / "a_output" / "standard_osm_trail.geojson"
-OUTPUT_PATH = BASE_DIR / "data" / "interim" / "a_output" / "standard_trail_merged.geojson"
-
-DISTANCE_TOLERANCE_M = 35.0
-COVERAGE_THRESHOLD = 0.6
-GRID_SIZE_M = 500.0
 
 REQUIRED_PROPERTIES = [
     "trail_id",
@@ -34,6 +25,18 @@ REQUIRED_PROPERTIES = [
     "is_official",
     "raw_tags",
 ]
+
+DISTANCE_TOLERANCE_M = 35.0
+COVERAGE_THRESHOLD = 0.6
+GRID_SIZE_M = 500.0
+
+SCRIPT_PATH = Path(__file__).resolve()
+PYTHON_DIR = SCRIPT_PATH.parents[2]
+A_OUTPUT_DIR = PYTHON_DIR / "data" / "interim" / "a_output"
+
+OSM_INPUT_PATH = A_OUTPUT_DIR / "standard_osm_trail.geojson"
+PUBLIC_INPUT_PATH = A_OUTPUT_DIR / "standard_public_trail.geojson"
+OUTPUT_PATH = A_OUTPUT_DIR / "standard_trail.geojson"
 
 
 def read_json(path: Path) -> Any:
@@ -401,17 +404,14 @@ def merge_public_first(
 
 
 def main() -> None:
-    if not (0 < COVERAGE_THRESHOLD <= 1):
-        raise ValueError("COVERAGE_THRESHOLD는 0보다 크고 1 이하여야 합니다.")
+    if not OSM_INPUT_PATH.exists():
+        raise FileNotFoundError(f"OSM 입력 파일이 없습니다: {OSM_INPUT_PATH}")
 
-    if not PUBLIC_PATH.exists():
-        raise FileNotFoundError(f"PUBLIC 입력 파일이 없습니다: {PUBLIC_PATH}")
+    if not PUBLIC_INPUT_PATH.exists():
+        raise FileNotFoundError(f"PUBLIC 입력 파일이 없습니다: {PUBLIC_INPUT_PATH}")
 
-    if not OSM_PATH.exists():
-        raise FileNotFoundError(f"OSM 입력 파일이 없습니다: {OSM_PATH}")
-
-    public_data = read_json(PUBLIC_PATH)
-    osm_data = read_json(OSM_PATH)
+    public_data = read_json(PUBLIC_INPUT_PATH)
+    osm_data = read_json(OSM_INPUT_PATH)
 
     public_features = validate_feature_collection(public_data, "PUBLIC")
     osm_features = validate_feature_collection(osm_data, "OSM")
@@ -433,8 +433,8 @@ def main() -> None:
     summary = build_summary(merged_features)
 
     print("----- PUBLIC 우선 병합 완료 -----")
-    print(f"PUBLIC 입력 파일: {PUBLIC_PATH}")
-    print(f"OSM 입력 파일: {OSM_PATH}")
+    print(f"PUBLIC 입력 파일: {PUBLIC_INPUT_PATH}")
+    print(f"OSM 입력 파일: {OSM_INPUT_PATH}")
     print(f"출력 파일: {OUTPUT_PATH}")
     print()
 
