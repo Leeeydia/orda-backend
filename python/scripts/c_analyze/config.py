@@ -31,6 +31,7 @@ DATA_DIR = BASE_DIR / "data"
 
 # 개발 중간 산출물
 INTERIM_C_OUTPUT_DIR = DATA_DIR / "interim" / "c_output"
+NODE_ELEVATION_PATH = INTERIM_C_OUTPUT_DIR / "node_with_elevation.geojson"
 FINAL_TRAIL_DATASET_PATH = INTERIM_C_OUTPUT_DIR / "final_trail_dataset.geojson"
 SUMMIT_POINTS_PATH = INTERIM_C_OUTPUT_DIR / "summit_points.geojson"
 QUALITY_REPORT_PATH = INTERIM_C_OUTPUT_DIR / "quality_report.md"

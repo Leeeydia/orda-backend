@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from config import FINAL_TRAIL_DATASET_PATH
+from config import FINAL_TRAIL_DATASET_PATH, NODE_ELEVATION_PATH
 from pipeline import load_c_stage_inputs, build_final_trail_dataset, save_geojson
 
 
@@ -9,31 +9,27 @@ def main() -> None:
     loaded = load_c_stage_inputs()
 
     edge_features = loaded["edge_features"]
-    dem_dataset = loaded["dem_dataset"]
-    node_index = loaded["node_index"]
+    node_elev_index = loaded["node_elev_index"]
     summit_list = loaded["summit_list"]
     node_ids = loaded["node_ids"]
     duplicate_edge_ids = loaded["duplicate_edge_ids"]
 
     print(f"  edges: {len(edge_features)}개")
-    print(f"  nodes: {len(node_index)}개")
+    print(f"  nodes (with elevation): {len(node_elev_index)}개")
     print(f"  summits: {len(summit_list)}개")
-    print(f"  DEM CRS: {dem_dataset.crs}")
+
+    print(f"\n  node_with_elevation 저장됨: {NODE_ELEVATION_PATH}")
 
     print("\n[C단계] final_trail_dataset 생성 중...")
     final_dataset = build_final_trail_dataset(
         edge_features=edge_features,
-        dem_dataset=dem_dataset,
-        node_index=node_index,
+        node_elev_index=node_elev_index,
         summit_list=summit_list,
         node_ids=node_ids,
         duplicate_edge_ids=duplicate_edge_ids,
     )
 
     save_geojson(FINAL_TRAIL_DATASET_PATH, final_dataset)
-
-    # DEM 닫기
-    dem_dataset.close()
 
     # 결과 출력
     print("\n[FINAL_TRAIL_DATASET_BUILD_RESULT]")
@@ -48,9 +44,9 @@ def main() -> None:
         print(
             f"  {props['edge_id']}"
             f" | elev: {props['elevation_start_m']} → {props['elevation_end_m']}"
-            f" | gain: {props['elevation_gain_m']}"
+            f" | diff: {props['elevation_diff_m']}"
             f" | slope: {props['slope_percent']}%"
-            f" | diff: {props['difficulty']}"
+            f" | difficulty: {props['difficulty']}"
             f" | summit: {props['nearest_summit_id']}"
             f" | qa: {props['qa_status']}"
         )
