@@ -4,7 +4,7 @@ from collections import Counter
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-INPUT_PATH = BASE_DIR / "data" / "interim" / "a_output" / "standard_trail_merged.geojson"
+INPUT_PATH = BASE_DIR / "data" / "interim" / "a_output" / "standard_trail.geojson"
 
 REQUIRED_PROPERTIES = ["trail_id", "source", "length_m"]
 
