@@ -388,14 +388,14 @@ def build_initial_graph(
             stats["invalid_zero_length"] += 1
             continue
 
-        start_node_id = registry.get_or_create(coords[0])
-        end_node_id   = registry.get_or_create(coords[-1])
-
         line_key = make_line_key(coords, segment["is_bidirectional"])
         if line_key in seen_line_keys:
             print(f"[중복 제거: 동일 좌표] trail_id={segment['trail_id']}, segment_order={segment['source_segment_order']}")
             stats["duplicate_removed_count"] += 1
             continue
+
+        start_node_id = registry.get_or_create(coords[0])
+        end_node_id   = registry.get_or_create(coords[-1])
 
         node_pair_key = make_node_pair_key(
             start_node_id,
