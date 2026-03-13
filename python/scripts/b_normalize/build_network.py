@@ -28,6 +28,7 @@ PRUNE_DANGLING_EDGE_MIN_M = 20.0
 PRUNE_MAX_ITERATIONS = 50
 
 DUPLICATE_EDGE_LENGTH_TOLERANCE_M = 5.0
+MAX_EDGE_LENGTH_M = 50_000
 
 # =========================================================
 # 2. 공통 함수
@@ -839,6 +840,7 @@ def run_basic_qa(edge_features: list[dict], node_features: list[dict], registry:
     non_positive_distance_count = 0
     self_loop_count = 0
     coord_mismatch_count = 0
+    abnormal_length_count = 0
 
     for edge_feature in edge_features:
         props = edge_feature["properties"]
@@ -854,6 +856,8 @@ def run_basic_qa(edge_features: list[dict], node_features: list[dict], registry:
             non_positive_distance_count += 1
         if start_node_id == end_node_id:
             self_loop_count += 1
+        if props["distance_m"] > MAX_EDGE_LENGTH_M:
+            abnormal_length_count += 1
 
         try:
             expected_start = registry.coord(start_node_id)
@@ -873,6 +877,7 @@ def run_basic_qa(edge_features: list[dict], node_features: list[dict], registry:
     print(f"distance_m <= 0 edge 수: {non_positive_distance_count}")
     print(f"self-loop edge 수: {self_loop_count}")
     print(f"coords-노드 좌표 불일치 edge 수: {coord_mismatch_count}")
+    print(f"비정상 장거리 edge 수 ({MAX_EDGE_LENGTH_M/1000:.0f}km 초과, 좌표 오류 의심): {abnormal_length_count}")
 
 # =========================================================
 # 10. 실행
