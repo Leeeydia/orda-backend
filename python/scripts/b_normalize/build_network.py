@@ -164,7 +164,7 @@ def split_edges_at_existing_nodes(
         registry.get_or_create(list(key))
 
     new_edges: dict[str, dict] = {}
-    next_edge_number = 1
+    next_edge_number  = max((int(eid[1:]) for eid in edges), default=0) + 1
 
     split_source_edge_count = 0
     created_split_edge_count = 0
@@ -176,9 +176,11 @@ def split_edges_at_existing_nodes(
         if not coords_parts:
             continue
 
-        if len(coords_parts) > 1:
-            split_source_edge_count += 1
+        if len(coords_parts) == 1:
+            new_edges[edge_id] = edge
+            continue
 
+        split_source_edge_count += 1
         for part_coords in coords_parts:
             distance_m = calculate_length_m(part_coords)
             if distance_m <= 0:
