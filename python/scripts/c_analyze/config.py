@@ -55,3 +55,14 @@ ABNORMAL_SLOPE_THRESHOLD = 100
 # 12 이상: hard
 EASY_MAX_EXCLUSIVE = 5
 MEDIUM_MAX_EXCLUSIVE = 12
+
+# ──────────────────────────────────────────────
+# PostgreSQL 접속 설정
+# ──────────────────────────────────────────────
+import os
+
+DB_HOST = os.environ.get("ORDA_DB_HOST", "localhost")
+DB_PORT = os.environ.get("ORDA_DB_PORT", "5432")
+DB_NAME = os.environ.get("ORDA_DB_NAME", "orda")
+DB_USER = os.environ.get("ORDA_DB_USER", "postgres")
+DB_PASSWORD = os.environ.get("ORDA_DB_PASSWORD", "0000")
