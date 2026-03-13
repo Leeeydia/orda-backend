@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from config import INPUT_SUMMIT_PATH, SUMMIT_POINTS_PATH
+from config import INPUT_SUMMIT_PATH, SUMMIT_POINTS_PATH, SUMMIT_DEFAULT_RADIUS_M
 from pipeline import read_geojson_features, save_geojson
 
 
@@ -51,7 +51,7 @@ def normalize_summit_feature(index: int, feature: dict[str, Any]) -> dict[str, A
 
     radius_m = properties.get("radius_m")
     if not isinstance(radius_m, (int, float)):
-        radius_m = None
+        radius_m = SUMMIT_DEFAULT_RADIUS_M
 
     return {
         "type": "Feature",
