@@ -3,6 +3,8 @@ import json
 from collections import Counter
 from pathlib import Path
 
+BASE_DIR = Path(__file__).resolve().parents[2]
+INPUT_PATH = BASE_DIR / "data" / "interim" / "a_output" / "standard_trail_merged.geojson"
 
 REQUIRED_PROPERTIES = ["trail_id", "source", "length_m"]
 
@@ -16,31 +18,12 @@ def get_project_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def get_default_input_path() -> Path:
-    """
-    기본 검수 대상 파일 경로
-    """
-    return get_project_root() / "data" / "interim" / "a_output" / "standard_trail.geojson"
-
-
 def is_null_like(value):
     return value is None
 
 
 def main():
-    default_input = get_default_input_path()
-
-    parser = argparse.ArgumentParser(
-        description="standard_trail.geojson 레벨 1 검수 스크립트"
-    )
-    parser.add_argument(
-        "--input",
-        default=str(default_input),
-        help=f"검수할 standard_trail.geojson 경로 (기본값: {default_input})",
-    )
-    args = parser.parse_args()
-
-    input_path = Path(args.input).resolve()
+    input_path = INPUT_PATH.resolve()
 
     if not input_path.exists():
         raise FileNotFoundError(f"검수 대상 파일이 없습니다: {input_path}")

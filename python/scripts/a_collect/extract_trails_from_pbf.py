@@ -8,6 +8,10 @@ import osmium
 from pyproj import Geod
 from shapely.geometry import LineString
 
+BASE_DIR = Path(__file__).resolve().parents[2]
+
+INPUT_PBF_PATH = BASE_DIR / "data" / "raw" / "south-korea-latest.osm.pbf"
+OUTPUT_GEOJSON_PATH = BASE_DIR / "data" / "interim" / "a_output" / "standard_osm_trail.geojson"
 
 EXCLUDED_HIGHWAY_VALUES = {"service", "track", "cycleway", "unclassified"}
 EXCLUDED_FOOTWAY_VALUES = {"sidewalk", "crossing"}
@@ -40,14 +44,6 @@ URBAN_PAVED_SURFACES = {
 
 def get_project_root() -> Path:
     return Path(__file__).resolve().parents[2]
-
-
-def get_default_input_path() -> Path:
-    return get_project_root() / "data" / "raw" / "south-korea-latest.osm.pbf"
-
-
-def get_default_output_path() -> Path:
-    return get_project_root() / "data" / "interim" / "a_output" / "standard_trail.geojson"
 
 
 def to_plain_dict(tags) -> dict:
@@ -313,29 +309,9 @@ def export_geojson(gdf: gpd.GeoDataFrame, output_path: Path):
 
 
 def main():
-    default_input = get_default_input_path()
-    default_output = get_default_output_path()
 
-    parser = argparse.ArgumentParser(
-        description="OSM PBF에서 등산로 way를 추출해 standard_trail.geojson 생성"
-    )
-    parser.add_argument(
-        "--input",
-        default=str(default_input),
-        help=f"입력 PBF 파일 경로 (기본값: {default_input})",
-    )
-    parser.add_argument(
-        "--output",
-        default=str(default_output),
-        help=f"출력 GeoJSON 파일 경로 (기본값: {default_output})",
-    )
-    args = parser.parse_args()
-
-    input_path = Path(args.input).resolve()
-    output_path = Path(args.output).resolve()
-
-    if not input_path.exists():
-        raise FileNotFoundError(f"입력 파일이 없습니다: {input_path}")
+    input_path = INPUT_PBF_PATH
+    output_path = OUTPUT_GEOJSON_PATH
 
     print("[1/5] PBF 파일 읽기 시작")
     print(f"입력 파일: {input_path}")

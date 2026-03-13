@@ -1,0 +1,452 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+from collections import defaultdict
+from pathlib import Path
+from typing import Any
+
+from pyproj import Transformer
+from shapely.geometry import shape
+from shapely.ops import transform, unary_union
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+
+PUBLIC_PATH = BASE_DIR / "data" / "interim" / "a_output" / "standard_public_trail.geojson"
+OSM_PATH = BASE_DIR / "data" / "interim" / "a_output" / "standard_osm_trail.geojson"
+OUTPUT_PATH = BASE_DIR / "data" / "interim" / "a_output" / "standard_trail_merged.geojson"
+
+DISTANCE_TOLERANCE_M = 35.0
+COVERAGE_THRESHOLD = 0.6
+GRID_SIZE_M = 500.0
+
+REQUIRED_PROPERTIES = [
+    "trail_id",
+    "name",
+    "source",
+    "source_ref",
+    "length_m",
+    "surface",
+    "trail_type",
+    "mountain_name",
+    "admin_region",
+    "is_official",
+    "raw_tags",
+]
+
+
+def read_json(path: Path) -> Any:
+    if not path.exists():
+        raise FileNotFoundError(f"파일이 없습니다: {path}")
+    with path.open("r", encoding="utf-8") as file:
+        return json.load(file)
+
+
+def write_json(path: Path, data: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as file:
+        json.dump(
+            data,
+            file,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+
+
+def validate_feature_collection(data: dict[str, Any], label: str) -> list[dict[str, Any]]:
+    if data.get("type") != "FeatureCollection":
+        raise ValueError(f"{label}: type이 FeatureCollection이 아닙니다.")
+
+    features = data.get("features")
+    if not isinstance(features, list):
+        raise ValueError(f"{label}: features가 리스트가 아닙니다.")
+
+    for index, feature in enumerate(features):
+        if feature.get("type") != "Feature":
+            raise ValueError(f"{label}: feature[{index}] type이 Feature가 아닙니다.")
+
+        geometry = feature.get("geometry")
+        if not isinstance(geometry, dict):
+            raise ValueError(f"{label}: feature[{index}] geometry가 dict가 아닙니다.")
+
+        if geometry.get("type") != "LineString":
+            raise ValueError(f"{label}: feature[{index}] geometry.type이 LineString이 아닙니다.")
+
+        coordinates = geometry.get("coordinates")
+        if not isinstance(coordinates, list) or len(coordinates) < 2:
+            raise ValueError(f"{label}: feature[{index}] coordinates가 올바르지 않습니다.")
+
+        for coord_index, coord in enumerate(coordinates):
+            if not isinstance(coord, list) or len(coord) != 2:
+                raise ValueError(
+                    f"{label}: feature[{index}] coordinates[{coord_index}]가 [lon, lat] 형태가 아닙니다."
+                )
+
+            lon, lat = coord
+            if not isinstance(lon, (int, float)) or not isinstance(lat, (int, float)):
+                raise ValueError(
+                    f"{label}: feature[{index}] coordinates[{coord_index}]에 숫자가 아닌 값이 있습니다."
+                )
+
+            if not (-180 <= lon <= 180 and -90 <= lat <= 90):
+                raise ValueError(
+                    f"{label}: feature[{index}] coordinates[{coord_index}] 범위가 잘못되었습니다."
+                )
+
+        properties = feature.get("properties")
+        if not isinstance(properties, dict):
+            raise ValueError(f"{label}: feature[{index}] properties가 dict가 아닙니다.")
+
+        for key in REQUIRED_PROPERTIES:
+            if key not in properties:
+                raise ValueError(f"{label}: feature[{index}] properties에 필수 키 {key} 가 없습니다.")
+
+    return features
+
+
+def normalize_feature(feature: dict[str, Any], source_label: str) -> dict[str, Any]:
+    properties = dict(feature["properties"])
+    geometry = feature["geometry"]
+
+    original_trail_id = str(properties.get("trail_id", "")).strip()
+    if not original_trail_id:
+        raise ValueError(f"{source_label}: 빈 trail_id가 있습니다.")
+
+    actual_source = str(properties.get("source", "")).strip().upper()
+    if actual_source != source_label:
+        raise ValueError(
+            f"{source_label}: source 값이 예상과 다릅니다. expected={source_label}, actual={actual_source}"
+        )
+
+    new_trail_id = f"{source_label}_{original_trail_id}"
+
+    raw_tags = properties.get("raw_tags")
+    if raw_tags is None or not isinstance(raw_tags, dict):
+        raw_tags = {}
+    else:
+        raw_tags = dict(raw_tags)
+
+    raw_tags["original_trail_id"] = original_trail_id
+
+    properties["trail_id"] = new_trail_id
+    properties["source"] = source_label
+    properties["raw_tags"] = raw_tags
+
+    return {
+        "type": "Feature",
+        "properties": properties,
+        "geometry": geometry,
+    }
+
+
+def geometry_hash(geometry: dict[str, Any]) -> str:
+    raw = json.dumps(geometry, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def safe_length_key(length_value: Any) -> str:
+    try:
+        return f"{float(length_value):.1f}"
+    except (TypeError, ValueError):
+        return "INVALID"
+
+
+def make_same_source_exact_key(feature: dict[str, Any]) -> str:
+    payload = {
+        "source": feature["properties"].get("source"),
+        "source_ref": feature["properties"].get("source_ref"),
+        "geometry_hash": geometry_hash(feature["geometry"]),
+        "length_key": safe_length_key(feature["properties"].get("length_m")),
+    }
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def to_metric_linestring(geometry: dict[str, Any], transformer: Transformer):
+    geom = shape(geometry)
+    if geom.geom_type != "LineString":
+        raise ValueError(f"LineString만 지원합니다. actual={geom.geom_type}")
+    return transform(transformer.transform, geom)
+
+
+def bbox_to_grid_keys(bounds: tuple[float, float, float, float], grid_size_m: float) -> list[tuple[int, int]]:
+    minx, miny, maxx, maxy = bounds
+    start_x = math.floor(minx / grid_size_m)
+    end_x = math.floor(maxx / grid_size_m)
+    start_y = math.floor(miny / grid_size_m)
+    end_y = math.floor(maxy / grid_size_m)
+
+    keys: list[tuple[int, int]] = []
+    for gx in range(start_x, end_x + 1):
+        for gy in range(start_y, end_y + 1):
+            keys.append((gx, gy))
+    return keys
+
+
+def expand_bounds(bounds: tuple[float, float, float, float], margin_m: float) -> tuple[float, float, float, float]:
+    minx, miny, maxx, maxy = bounds
+    return (
+        minx - margin_m,
+        miny - margin_m,
+        maxx + margin_m,
+        maxy + margin_m,
+    )
+
+
+def build_public_spatial_index(
+        public_features: list[dict[str, Any]],
+        transformer: Transformer,
+        distance_tolerance_m: float,
+        grid_size_m: float,
+) -> tuple[list[Any], dict[tuple[int, int], list[int]]]:
+    public_metric_geoms: list[Any] = []
+    public_grid: dict[tuple[int, int], list[int]] = defaultdict(list)
+
+    for index, feature in enumerate(public_features):
+        metric_geom = to_metric_linestring(feature["geometry"], transformer)
+        public_metric_geoms.append(metric_geom)
+
+        expanded = expand_bounds(metric_geom.bounds, distance_tolerance_m)
+        for key in bbox_to_grid_keys(expanded, grid_size_m):
+            public_grid[key].append(index)
+
+    return public_metric_geoms, public_grid
+
+
+def get_public_candidate_ids(
+        osm_metric_geom,
+        public_grid: dict[tuple[int, int], list[int]],
+        distance_tolerance_m: float,
+        grid_size_m: float,
+) -> list[int]:
+    expanded = expand_bounds(osm_metric_geom.bounds, distance_tolerance_m)
+    candidate_ids: set[int] = set()
+
+    for key in bbox_to_grid_keys(expanded, grid_size_m):
+        for public_id in public_grid.get(key, []):
+            candidate_ids.add(public_id)
+
+    return list(candidate_ids)
+
+
+def compute_public_coverage_ratio(
+        osm_metric_geom,
+        candidate_ids: list[int],
+        public_metric_geoms: list[Any],
+        distance_tolerance_m: float,
+) -> tuple[float, float]:
+    if osm_metric_geom.length <= 0:
+        return 0.0, float("inf")
+
+    candidate_buffers = []
+    nearest_distance = float("inf")
+
+    for public_id in candidate_ids:
+        public_geom = public_metric_geoms[public_id]
+        distance = osm_metric_geom.distance(public_geom)
+
+        if distance < nearest_distance:
+            nearest_distance = distance
+
+        if distance <= distance_tolerance_m:
+            candidate_buffers.append(public_geom.buffer(distance_tolerance_m))
+
+    if not candidate_buffers:
+        return 0.0, nearest_distance
+
+    public_buffer_union = unary_union(candidate_buffers)
+    covered_length = osm_metric_geom.intersection(public_buffer_union).length
+    coverage_ratio = covered_length / osm_metric_geom.length
+
+    return coverage_ratio, nearest_distance
+
+
+def build_summary(features: list[dict[str, Any]]) -> dict[str, Any]:
+    source_counts: dict[str, int] = {}
+    geometry_type_counts: dict[str, int] = {}
+    trail_type_counts: dict[str, int] = {}
+    length_le_zero = 0
+    missing_required_feature_count = 0
+
+    for feature in features:
+        properties = feature["properties"]
+        geometry = feature["geometry"]
+
+        source = str(properties.get("source"))
+        source_counts[source] = source_counts.get(source, 0) + 1
+
+        geometry_type = str(geometry.get("type"))
+        geometry_type_counts[geometry_type] = geometry_type_counts.get(geometry_type, 0) + 1
+
+        trail_type = str(properties.get("trail_type"))
+        trail_type_counts[trail_type] = trail_type_counts.get(trail_type, 0) + 1
+
+        try:
+            length_m = float(properties.get("length_m", 0))
+            if length_m <= 0:
+                length_le_zero += 1
+        except (TypeError, ValueError):
+            length_le_zero += 1
+
+        for key in REQUIRED_PROPERTIES:
+            if key not in properties:
+                missing_required_feature_count += 1
+                break
+
+    return {
+        "total_features": len(features),
+        "source_counts": source_counts,
+        "geometry_type_counts": geometry_type_counts,
+        "trail_type_counts": trail_type_counts,
+        "length_le_zero": length_le_zero,
+        "missing_required_feature_count": missing_required_feature_count,
+    }
+
+
+def merge_public_first(
+        public_features: list[dict[str, Any]],
+        osm_features: list[dict[str, Any]],
+        distance_tolerance_m: float,
+        coverage_threshold: float,
+        grid_size_m: float,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    merged_features: list[dict[str, Any]] = []
+
+    seen_same_source_exact_keys: set[str] = set()
+
+    transformer = Transformer.from_crs("EPSG:4326", "EPSG:5179", always_xy=True)
+
+    public_metric_geoms, public_grid = build_public_spatial_index(
+        public_features=public_features,
+        transformer=transformer,
+        distance_tolerance_m=distance_tolerance_m,
+        grid_size_m=grid_size_m,
+    )
+
+    stats: dict[str, Any] = {
+        "public_input_count": len(public_features),
+        "osm_input_count": len(osm_features),
+        "public_same_source_duplicates_removed": 0,
+        "osm_same_source_duplicates_removed": 0,
+        "osm_skipped_by_public_priority": 0,
+        "osm_kept_as_fallback": 0,
+        "merged_output_count": 0,
+        "distance_tolerance_m": distance_tolerance_m,
+        "coverage_threshold": coverage_threshold,
+        "grid_size_m": grid_size_m,
+        "avg_public_candidates_per_osm": 0.0,
+    }
+
+    total_candidate_count = 0
+
+    for feature in public_features:
+        normalized = normalize_feature(feature, "PUBLIC")
+        same_source_key = make_same_source_exact_key(normalized)
+
+        if same_source_key in seen_same_source_exact_keys:
+            stats["public_same_source_duplicates_removed"] += 1
+            continue
+
+        seen_same_source_exact_keys.add(same_source_key)
+        merged_features.append(normalized)
+
+    for feature in osm_features:
+        normalized = normalize_feature(feature, "OSM")
+        same_source_key = make_same_source_exact_key(normalized)
+
+        if same_source_key in seen_same_source_exact_keys:
+            stats["osm_same_source_duplicates_removed"] += 1
+            continue
+
+        osm_metric_geom = to_metric_linestring(normalized["geometry"], transformer)
+        candidate_ids = get_public_candidate_ids(
+            osm_metric_geom=osm_metric_geom,
+            public_grid=public_grid,
+            distance_tolerance_m=distance_tolerance_m,
+            grid_size_m=grid_size_m,
+        )
+        total_candidate_count += len(candidate_ids)
+
+        coverage_ratio, nearest_distance = compute_public_coverage_ratio(
+            osm_metric_geom=osm_metric_geom,
+            candidate_ids=candidate_ids,
+            public_metric_geoms=public_metric_geoms,
+            distance_tolerance_m=distance_tolerance_m,
+        )
+
+        raw_tags = normalized["properties"].get("raw_tags")
+        if not isinstance(raw_tags, dict):
+            raw_tags = {}
+            normalized["properties"]["raw_tags"] = raw_tags
+
+        raw_tags["merge_public_coverage_ratio"] = round(coverage_ratio, 4)
+        raw_tags["merge_public_nearest_distance_m"] = (
+            None if math.isinf(nearest_distance) else round(nearest_distance, 2)
+        )
+
+        if coverage_ratio >= coverage_threshold:
+            stats["osm_skipped_by_public_priority"] += 1
+            continue
+
+        seen_same_source_exact_keys.add(same_source_key)
+        stats["osm_kept_as_fallback"] += 1
+        merged_features.append(normalized)
+
+    if osm_features:
+        stats["avg_public_candidates_per_osm"] = round(total_candidate_count / len(osm_features), 2)
+
+    stats["merged_output_count"] = len(merged_features)
+    return merged_features, stats
+
+
+def main() -> None:
+    if not (0 < COVERAGE_THRESHOLD <= 1):
+        raise ValueError("COVERAGE_THRESHOLD는 0보다 크고 1 이하여야 합니다.")
+
+    if not PUBLIC_PATH.exists():
+        raise FileNotFoundError(f"PUBLIC 입력 파일이 없습니다: {PUBLIC_PATH}")
+
+    if not OSM_PATH.exists():
+        raise FileNotFoundError(f"OSM 입력 파일이 없습니다: {OSM_PATH}")
+
+    public_data = read_json(PUBLIC_PATH)
+    osm_data = read_json(OSM_PATH)
+
+    public_features = validate_feature_collection(public_data, "PUBLIC")
+    osm_features = validate_feature_collection(osm_data, "OSM")
+
+    merged_features, merge_stats = merge_public_first(
+        public_features=public_features,
+        osm_features=osm_features,
+        distance_tolerance_m=DISTANCE_TOLERANCE_M,
+        coverage_threshold=COVERAGE_THRESHOLD,
+        grid_size_m=GRID_SIZE_M,
+    )
+
+    result = {
+        "type": "FeatureCollection",
+        "features": merged_features,
+    }
+    write_json(OUTPUT_PATH, result)
+
+    summary = build_summary(merged_features)
+
+    print("----- PUBLIC 우선 병합 완료 -----")
+    print(f"PUBLIC 입력 파일: {PUBLIC_PATH}")
+    print(f"OSM 입력 파일: {OSM_PATH}")
+    print(f"출력 파일: {OUTPUT_PATH}")
+    print()
+
+    print("----- 병합 통계 -----")
+    for key, value in merge_stats.items():
+        print(f"{key}: {value}")
+    print()
+
+    print("----- 내용 점검 요약 -----")
+    for key, value in summary.items():
+        print(f"{key}: {value}")
+
+
+if __name__ == "__main__":
+    main()
