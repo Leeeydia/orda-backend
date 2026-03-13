@@ -909,17 +909,34 @@ def build_network() -> None:
     print(f"분할 대상 원본 edge 수: {split_stats['split_source_edge_count']}")
     print(f"분할 후 생성된 edge 수: {split_stats['created_split_edge_count']}")
 
-    edges, collapse_stats = collapse_pass_through_nodes(edges)
+    total_collapse_stats = {"collapsed_degree2_node_count": 0, "merged_edge_count": 0}
+    total_prune_stats = {"isolated_removed_count": 0, "dangling_removed_count": 0, "iterations": 0}
+    loop_count = 0
 
-    print("----- degree=2 병합 완료 -----")
-    print(f"collapse된 degree=2 node 수: {collapse_stats['collapsed_degree2_node_count']}")
-    print(f"병합된 edge 생성 수: {collapse_stats['merged_edge_count']}")
+    while True:
+        loop_count += 1
 
-    edges, prune_stats = prune_dangling_edges(edges)
-    print(f"\n----- Dangling 엣지 제거 완료 (기준: 고립 {PRUNE_ISOLATED_EDGE_MIN_M}m / 막다른 {PRUNE_DANGLING_EDGE_MIN_M}m) -----")
-    print(f"완전 고립 엣지 제거 수: {prune_stats['isolated_removed_count']}")
-    print(f"막다른 엣지 제거 수: {prune_stats['dangling_removed_count']}")
-    print(f"반복 횟수: {prune_stats['iterations']}")
+        edges, collapse_stats = collapse_pass_through_nodes(edges)
+        total_collapse_stats["collapsed_degree2_node_count"] += collapse_stats["collapsed_degree2_node_count"]
+        total_collapse_stats["merged_edge_count"] += collapse_stats["merged_edge_count"]
+
+        edges, prune_stats = prune_dangling_edges(edges)
+        total_prune_stats["isolated_removed_count"] += prune_stats["isolated_removed_count"]
+        total_prune_stats["dangling_removed_count"] += prune_stats["dangling_removed_count"]
+        total_prune_stats["iterations"] += prune_stats["iterations"]
+
+        if (
+            collapse_stats["collapsed_degree2_node_count"] == 0
+            and prune_stats["isolated_removed_count"] == 0
+            and prune_stats["dangling_removed_count"] == 0
+        ):
+            break
+
+    print(f"----- degree=2 병합 + Dangling 제거 완료 ({loop_count}회 수렴) -----")
+    print(f"collapse된 degree=2 node 수 : {total_collapse_stats['collapsed_degree2_node_count']}")
+    print(f"병합된 edge 생성 수 : {total_collapse_stats['merged_edge_count']}")
+    print(f"완전 고립 엣지 ({PRUNE_ISOLATED_EDGE_MIN_M}m) 제거 수 : {total_prune_stats['isolated_removed_count']}")
+    print(f"막다른 엣지 ({PRUNE_DANGLING_EDGE_MIN_M}m) 제거 수 : {total_prune_stats['dangling_removed_count']}")
 
     edge_features, node_features, final_stats = build_final_output_features(edges, registry)
 
