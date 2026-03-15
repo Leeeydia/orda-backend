@@ -57,9 +57,8 @@ Thumbs.db
 /python/.ipynb_checkpoints/
 
 ### Python raw data ###
-/python/data/raw/osm/
-/python/data/raw/forest/
-/python/data/raw/dem/
+/python/data/raw/
+/python/data/raw/**
 
 ### Python outputs ###
 /python/output/temp/
