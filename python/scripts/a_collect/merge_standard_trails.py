@@ -3,7 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from collections import defaultdict
+import statistics
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -307,13 +308,83 @@ def build_summary(features: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def average_or_none(values: list[float]) -> float | None:
+    if not values:
+        return None
+    return round(sum(values) / len(values), 3)
+
+
+def median_or_none(values: list[float]) -> float | None:
+    if not values:
+        return None
+    return round(statistics.median(values), 3)
+
+
+def bucket_coverage_ratio(value: float) -> str:
+    if value < 0.2:
+        return "0.0~0.2"
+    if value < 0.4:
+        return "0.2~0.4"
+    if value < 0.6:
+        return "0.4~0.6"
+    if value < 0.8:
+        return "0.6~0.8"
+    return "0.8~1.0"
+
+
+def bucket_distance(value: float) -> str:
+    if math.isinf(value):
+        return "INF"
+    if value <= 10:
+        return "0~10m"
+    if value <= 20:
+        return "10~20m"
+    if value <= 35:
+        return "20~35m"
+    return "35m 초과"
+
+
+def build_quality_summary(
+        skipped_lengths: list[float],
+        kept_lengths: list[float],
+        skipped_coverages: list[float],
+        kept_coverages: list[float],
+        skipped_distances: list[float],
+        kept_distances: list[float],
+        osm_input_count: int,
+        osm_skipped_count: int,
+        osm_kept_count: int,
+) -> dict[str, Any]:
+    quality = {
+        "osm_skip_rate": round(osm_skipped_count / osm_input_count, 4) if osm_input_count else 0.0,
+        "osm_keep_rate": round(osm_kept_count / osm_input_count, 4) if osm_input_count else 0.0,
+        "skipped_osm_avg_length_m": average_or_none(skipped_lengths),
+        "skipped_osm_median_length_m": median_or_none(skipped_lengths),
+        "kept_osm_avg_length_m": average_or_none(kept_lengths),
+        "kept_osm_median_length_m": median_or_none(kept_lengths),
+        "skipped_osm_avg_coverage_ratio": average_or_none(skipped_coverages),
+        "skipped_osm_median_coverage_ratio": median_or_none(skipped_coverages),
+        "kept_osm_avg_coverage_ratio": average_or_none(kept_coverages),
+        "kept_osm_median_coverage_ratio": median_or_none(kept_coverages),
+        "skipped_osm_avg_nearest_distance_m": average_or_none(skipped_distances),
+        "skipped_osm_median_nearest_distance_m": median_or_none(skipped_distances),
+        "kept_osm_avg_nearest_distance_m": average_or_none(kept_distances),
+        "kept_osm_median_nearest_distance_m": median_or_none(kept_distances),
+        "skipped_coverage_bucket_counts": dict(Counter(bucket_coverage_ratio(v) for v in skipped_coverages)),
+        "kept_coverage_bucket_counts": dict(Counter(bucket_coverage_ratio(v) for v in kept_coverages)),
+        "skipped_distance_bucket_counts": dict(Counter(bucket_distance(v) for v in skipped_distances)),
+        "kept_distance_bucket_counts": dict(Counter(bucket_distance(v) for v in kept_distances)),
+    }
+    return quality
+
+
 def merge_public_first(
         public_features: list[dict[str, Any]],
         osm_features: list[dict[str, Any]],
         distance_tolerance_m: float,
         coverage_threshold: float,
         grid_size_m: float,
-) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
     merged_features: list[dict[str, Any]] = []
 
     seen_same_source_exact_keys: set[str] = set()
@@ -342,6 +413,13 @@ def merge_public_first(
     }
 
     total_candidate_count = 0
+
+    skipped_lengths: list[float] = []
+    kept_lengths: list[float] = []
+    skipped_coverages: list[float] = []
+    kept_coverages: list[float] = []
+    skipped_distances: list[float] = []
+    kept_distances: list[float] = []
 
     for feature in public_features:
         normalized = normalize_feature(feature, "PUBLIC")
@@ -388,19 +466,42 @@ def merge_public_first(
             None if math.isinf(nearest_distance) else round(nearest_distance, 2)
         )
 
+        length_m = float(normalized["properties"]["length_m"])
+
         if coverage_ratio >= coverage_threshold:
             stats["osm_skipped_by_public_priority"] += 1
+            skipped_lengths.append(length_m)
+            skipped_coverages.append(coverage_ratio)
+            if not math.isinf(nearest_distance):
+                skipped_distances.append(nearest_distance)
             continue
 
         seen_same_source_exact_keys.add(same_source_key)
         stats["osm_kept_as_fallback"] += 1
+        kept_lengths.append(length_m)
+        kept_coverages.append(coverage_ratio)
+        if not math.isinf(nearest_distance):
+            kept_distances.append(nearest_distance)
         merged_features.append(normalized)
 
     if osm_features:
         stats["avg_public_candidates_per_osm"] = round(total_candidate_count / len(osm_features), 2)
 
     stats["merged_output_count"] = len(merged_features)
-    return merged_features, stats
+
+    quality_summary = build_quality_summary(
+        skipped_lengths=skipped_lengths,
+        kept_lengths=kept_lengths,
+        skipped_coverages=skipped_coverages,
+        kept_coverages=kept_coverages,
+        skipped_distances=skipped_distances,
+        kept_distances=kept_distances,
+        osm_input_count=len(osm_features),
+        osm_skipped_count=stats["osm_skipped_by_public_priority"],
+        osm_kept_count=stats["osm_kept_as_fallback"],
+    )
+
+    return merged_features, stats, quality_summary
 
 
 def main() -> None:
@@ -416,7 +517,7 @@ def main() -> None:
     public_features = validate_feature_collection(public_data, "PUBLIC")
     osm_features = validate_feature_collection(osm_data, "OSM")
 
-    merged_features, merge_stats = merge_public_first(
+    merged_features, merge_stats, quality_summary = merge_public_first(
         public_features=public_features,
         osm_features=osm_features,
         distance_tolerance_m=DISTANCE_TOLERANCE_M,
@@ -440,6 +541,11 @@ def main() -> None:
 
     print("----- 병합 통계 -----")
     for key, value in merge_stats.items():
+        print(f"{key}: {value}")
+    print()
+
+    print("----- 병합 품질 요약 -----")
+    for key, value in quality_summary.items():
         print(f"{key}: {value}")
     print()
 
