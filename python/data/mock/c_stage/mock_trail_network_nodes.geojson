@@ -11,16 +11,55 @@
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [126.96510, 37.44521]
+        "coordinates": [126.96310, 37.44220]
       }
     },
     {
       "type": "Feature",
       "properties": {
         "node_id": "N0002",
+        "node_type": "waypoint",
+        "degree": 2,
+        "trail_refs": ["T0001"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.96410, 37.44350]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0003",
         "node_type": "junction",
         "degree": 3,
-        "trail_refs": ["T0001", "T0002"]
+        "trail_refs": ["T0001", "T0002", "T0003"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.96480, 37.44465]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0004",
+        "node_type": "junction",
+        "degree": 3,
+        "trail_refs": ["T0001", "T0002", "T0003"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.96510, 37.44521]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0005",
+        "node_type": "junction",
+        "degree": 3,
+        "trail_refs": ["T0001", "T0003"]
       },
       "geometry": {
         "type": "Point",
@@ -30,27 +69,300 @@
     {
       "type": "Feature",
       "properties": {
-        "node_id": "N0003",
+        "node_id": "N0006",
         "node_type": "summit_access",
         "degree": 1,
-        "trail_refs": ["T0001"]
+        "trail_refs": ["T0001", "T0003"]
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [126.96610, 37.44640]
+        "coordinates": [126.96610, 37.44650]
       }
     },
     {
       "type": "Feature",
       "properties": {
-        "node_id": "N0004",
+        "node_id": "N0007",
         "node_type": "end",
         "degree": 1,
         "trail_refs": ["T0002"]
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [126.96590, 37.44530]
+        "coordinates": [126.96400, 37.44500]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0008",
+        "node_type": "start",
+        "degree": 1,
+        "trail_refs": ["T0003"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.96200, 37.44100]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0009",
+        "node_type": "waypoint",
+        "degree": 2,
+        "trail_refs": ["T0003"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.96310, 37.44250]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0010",
+        "node_type": "start",
+        "degree": 1,
+        "trail_refs": ["T0004", "T0007"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.97850, 37.65800]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0011",
+        "node_type": "waypoint",
+        "degree": 2,
+        "trail_refs": ["T0004"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.97770, 37.65940]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0012",
+        "node_type": "junction",
+        "degree": 3,
+        "trail_refs": ["T0004", "T0005"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.97700, 37.66080]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0013",
+        "node_type": "waypoint",
+        "degree": 2,
+        "trail_refs": ["T0004"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.97620, 37.66220]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0014",
+        "node_type": "summit_access",
+        "degree": 1,
+        "trail_refs": ["T0004"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.97530, 37.66410]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0015",
+        "node_type": "waypoint",
+        "degree": 2,
+        "trail_refs": ["T0005"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.97780, 37.66180]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0016",
+        "node_type": "summit_access",
+        "degree": 1,
+        "trail_refs": ["T0005"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.97880, 37.66380]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0017",
+        "node_type": "start",
+        "degree": 1,
+        "trail_refs": ["T0006"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.96900, 37.66500]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0018",
+        "node_type": "waypoint",
+        "degree": 2,
+        "trail_refs": ["T0006"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.97020, 37.66400]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0019",
+        "node_type": "end",
+        "degree": 1,
+        "trail_refs": ["T0006"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.97230, 37.66280]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0020",
+        "node_type": "end",
+        "degree": 1,
+        "trail_refs": ["T0007"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.98230, 37.66280]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0021",
+        "node_type": "waypoint",
+        "degree": 2,
+        "trail_refs": ["T0007"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [126.98020, 37.65990]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0022",
+        "node_type": "start",
+        "degree": 1,
+        "trail_refs": ["T0008"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [127.01450, 37.69800]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0023",
+        "node_type": "waypoint",
+        "degree": 2,
+        "trail_refs": ["T0008"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [127.01390, 37.69940]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0024",
+        "node_type": "junction",
+        "degree": 3,
+        "trail_refs": ["T0008", "T0009", "T0010"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [127.01330, 37.70080]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0025",
+        "node_type": "summit_access",
+        "degree": 2,
+        "trail_refs": ["T0008", "T0010"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [127.01280, 37.70220]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0026",
+        "node_type": "summit_access",
+        "degree": 1,
+        "trail_refs": ["T0009"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [127.01480, 37.70290]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0027",
+        "node_type": "start",
+        "degree": 1,
+        "trail_refs": ["T0010"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [127.01550, 37.69750]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "node_id": "N0028",
+        "node_type": "waypoint",
+        "degree": 2,
+        "trail_refs": ["T0010"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [127.01460, 37.69970]
       }
     }
   ]
