@@ -148,7 +148,7 @@ def collect_all_intersection_coords(
     # 어떤 엣지의 중간점이 다른 엣지의 끝점과 일치하면 교차점
     intersection_coords: set[tuple[float, float]] = set()
     for edge in edges.values():
-        for coord in edge["coords"][1:-1]:  # 중간 좌표만
+        for coord in edge["coords"][1:-1]:
             key = make_point_key(coord)
             if key in endpoint_keys:
                 intersection_coords.add(key)
@@ -165,7 +165,7 @@ def split_edges_at_existing_nodes(
         registry.get_or_create(list(key))
 
     new_edges: dict[str, dict] = {}
-    next_edge_number  = max((int(eid[1:]) for eid in edges), default=0) + 1
+    next_edge_number = max((int(eid[1:]) for eid in edges), default=0) + 1
 
     split_source_edge_count = 0
     created_split_edge_count = 0
@@ -263,14 +263,19 @@ def is_effectively_duplicate_edge(
 
     return True
 
+
+def is_self_loop_edge(edge: dict) -> bool:
+    return edge["start_node_id"] == edge["end_node_id"]
+
+
 # =========================================================
 # 3. 노드 레지스트리
 # =========================================================
 
 class NodeRegistry:
     def __init__(self) -> None:
-        self._key_to_id:   dict[tuple[float, float], str]  = {}
-        self._id_to_coord: dict[str, list[float]]           = {}
+        self._key_to_id: dict[tuple[float, float], str] = {}
+        self._id_to_coord: dict[str, list[float]] = {}
         self._counter = 1
 
     def get_or_create(self, coord: list[float]) -> str:
@@ -395,7 +400,7 @@ def build_initial_graph(
             continue
 
         start_node_id = registry.get_or_create(coords[0])
-        end_node_id   = registry.get_or_create(coords[-1])
+        end_node_id = registry.get_or_create(coords[-1])
 
         node_pair_key = make_node_pair_key(
             start_node_id,
@@ -414,7 +419,6 @@ def build_initial_graph(
             print(f"[중복 제거: 동일 노드쌍] trail_id={segment['trail_id']}, segment_order={segment['source_segment_order']}")
             stats["duplicate_removed_count"] += 1
             continue
-
 
         edge_id = f"E{next_edge_number:04d}"
         next_edge_number += 1
@@ -492,6 +496,10 @@ def should_collapse_degree2_node(
 
     # 같은 edge 두 번 연결된 이상한 상황 방지
     if edge1["edge_id"] == edge2["edge_id"]:
+        return False
+
+    # self-loop가 하나라도 끼어 있으면 병합 금지
+    if is_self_loop_edge(edge1) or is_self_loop_edge(edge2):
         return False
 
     # 이동 방향 정책이 다르면 유지
@@ -630,7 +638,7 @@ def collapse_pass_through_nodes(
     )
     stats = {
         "collapsed_degree2_node_count": 0,
-        "merged_edge_count":            0,
+        "merged_edge_count": 0,
     }
 
     while queue:
@@ -640,34 +648,50 @@ def collapse_pass_through_nodes(
         connected = sorted(node_to_edges.get(node_id, set()))
 
         # 실제 병합 조건 재확인 (다른 병합으로 상황이 바뀌었을 수 있음)
-        if not should_collapse_degree2_node(node_id, connected, edges):
+        if len(connected) != 2:
             continue
 
         e1 = edges[connected[0]]
         e2 = edges[connected[1]]
+
+        # self-loop 엣지가 끼어 있으면 병합 후보에서 제외
+        if is_self_loop_edge(e1) or is_self_loop_edge(e2):
+            continue
+
+        if not should_collapse_degree2_node(node_id, connected, edges):
+            continue
 
         new_edge_id = f"E{next_edge_num:04d}"
         next_edge_num += 1
 
         merged = merge_two_edges_through_node(node_id, e1, e2, new_edge_id)
 
+        old_edge_ids = [e1["edge_id"], e2["edge_id"]]
+        touched_node_ids = {
+            e1["start_node_id"], e1["end_node_id"],
+            e2["start_node_id"], e2["end_node_id"],
+        }
+
         # 기존 엣지 제거
-        for old_eid in [e1["edge_id"], e2["edge_id"]]:
-            del edges[old_eid]
-            for nid in [e1["start_node_id"], e1["end_node_id"],
-                        e2["start_node_id"], e2["end_node_id"]]:
-                node_to_edges.get(nid, set()).discard(old_eid)
+        for old_eid in old_edge_ids:
+            if old_eid in edges:
+                del edges[old_eid]
+
+        for nid in touched_node_ids:
+            if nid in node_to_edges:
+                for old_eid in old_edge_ids:
+                    node_to_edges[nid].discard(old_eid)
 
         # 새 엣지 등록
         edges[new_edge_id] = merged
         node_to_edges.setdefault(merged["start_node_id"], set()).add(new_edge_id)
-        node_to_edges.setdefault(merged["end_node_id"],   set()).add(new_edge_id)
+        node_to_edges.setdefault(merged["end_node_id"], set()).add(new_edge_id)
 
         # 병합된 노드 제거
         node_to_edges.pop(node_id, None)
 
         stats["collapsed_degree2_node_count"] += 1
-        stats["merged_edge_count"]            += 1
+        stats["merged_edge_count"] += 1
 
         # 새 엣지 양 끝을 재검사 후보로 추가
         for neighbor in [merged["start_node_id"], merged["end_node_id"]]:
@@ -685,7 +709,7 @@ def prune_dangling_edges(
         edges: dict[str, dict],
         isolated_min_m: float = PRUNE_ISOLATED_EDGE_MIN_M,
         dangling_min_m: float = PRUNE_DANGLING_EDGE_MIN_M,
-        max_iterations: int   = PRUNE_MAX_ITERATIONS,
+        max_iterations: int = PRUNE_MAX_ITERATIONS,
 ) -> tuple[dict[str, dict], dict]:
     """
     네트워크와 연결되지 않은 짧은 엣지를 제거한다.
@@ -694,7 +718,7 @@ def prune_dangling_edges(
     stats = {
         "isolated_removed_count": 0,
         "dangling_removed_count": 0,
-        "iterations":             0,
+        "iterations": 0,
     }
 
     # ── 케이스 1: 완전 고립 엣지 (1회)
@@ -703,7 +727,7 @@ def prune_dangling_edges(
 
     for edge_id, edge in edges.items():
         s_deg = len(node_to_edges.get(edge["start_node_id"], set()))
-        e_deg = len(node_to_edges.get(edge["end_node_id"],   set()))
+        e_deg = len(node_to_edges.get(edge["end_node_id"], set()))
         if s_deg == 1 and e_deg == 1 and edge["distance_m"] < isolated_min_m:
             to_remove.append(edge_id)
 
@@ -719,9 +743,9 @@ def prune_dangling_edges(
 
         for edge_id, edge in edges.items():
             s_deg = len(node_to_edges.get(edge["start_node_id"], set()))
-            e_deg = len(node_to_edges.get(edge["end_node_id"],   set()))
+            e_deg = len(node_to_edges.get(edge["end_node_id"], set()))
             # 한쪽만 degree=1 이고 기준 거리 미만
-            is_dangling = (s_deg == 1) != (e_deg == 1)  # XOR
+            is_dangling = (s_deg == 1) != (e_deg == 1)
             if is_dangling and edge["distance_m"] < dangling_min_m:
                 to_remove.append(edge_id)
 
@@ -926,9 +950,9 @@ def build_network() -> None:
         total_prune_stats["iterations"] += prune_stats["iterations"]
 
         if (
-            collapse_stats["collapsed_degree2_node_count"] == 0
-            and prune_stats["isolated_removed_count"] == 0
-            and prune_stats["dangling_removed_count"] == 0
+                collapse_stats["collapsed_degree2_node_count"] == 0
+                and prune_stats["isolated_removed_count"] == 0
+                and prune_stats["dangling_removed_count"] == 0
         ):
             break
 
