@@ -13,7 +13,7 @@ from pyproj import Geod
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-INPUT_PATH = PROJECT_ROOT / "data" / "mock" / "standard_trail.geojson"
+INPUT_PATH = PROJECT_ROOT / "data" / "interim" / "a_output" / "standard_trail.geojson"
 OUTPUT_DIR = PROJECT_ROOT / "data" / "interim" / "b_output"
 
 EDGES_OUTPUT_PATH = OUTPUT_DIR / "trail_network_edges.geojson"
