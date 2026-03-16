@@ -14,15 +14,16 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 # 입력 경로
 # ──────────────────────────────────────────────
 # B단계 산출물 (현재는 mock 경로 사용)
-MOCK_DIR = BASE_DIR / "data" / "mock" / "c_stage"
-INPUT_EDGES_PATH = MOCK_DIR / "mock_trail_network_edges.geojson"
-INPUT_NODES_PATH = MOCK_DIR / "mock_trail_network_nodes.geojson"
+INPUT_B_DIR = BASE_DIR / "data" / "interim" / "b_output"
+INPUT_EDGES_PATH = INPUT_B_DIR / "trail_network_edges.geojson"
+INPUT_NODES_PATH = INPUT_B_DIR / "trail_network_nodes.geojson"
 
 # DEM 원본 경로
 INPUT_DEM_PATH = BASE_DIR / "data" / "raw" / "dem" / "nasadem" / "korea_dem.tif"
 
 # 정상 데이터 경로 (A단계 산출물 - 지금은 mock 사용)
-INPUT_SUMMIT_PATH = MOCK_DIR / "mock_summits.geojson"
+INPUT_A_DIR = BASE_DIR / "data" / "interim" / "a_output"
+INPUT_SUMMIT_PATH = INPUT_A_DIR / "standard_summit.geojson"
 
 # ──────────────────────────────────────────────
 # 출력 경로 (data/ 폴더 안에 있음)
