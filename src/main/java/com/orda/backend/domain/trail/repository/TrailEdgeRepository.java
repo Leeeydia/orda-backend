@@ -1,4 +1,14 @@
 package com.orda.backend.domain.trail.repository;
 
-public class TrailEdgeRepository {
+import com.orda.backend.domain.trail.entity.TrailEdge;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface TrailEdgeRepository extends JpaRepository<TrailEdge, Long> {
+
+    Optional<TrailEdge> findByEdgeId(String edgeId);
+
+    List<TrailEdge> findByNearestSummitId(String nearestSummitId);
 }
