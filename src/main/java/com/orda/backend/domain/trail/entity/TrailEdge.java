@@ -6,16 +6,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "trail_edge")
+@Table(name = "trail_edges")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class TrailEdge {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(name = "edge_id", nullable = false, unique = true)
+    @Column(name = "edge_id", nullable = false)
     private String edgeId;
 
     @Column(name = "start_node_id", nullable = false)
@@ -24,7 +21,7 @@ public class TrailEdge {
     @Column(name = "end_node_id", nullable = false)
     private String endNodeId;
 
-    @Column(name = "distance_m", nullable = false)
+    @Column(name = "distance_m")
     private Double distanceM;
 
     @Column(name = "elevation_start_m")
@@ -42,17 +39,13 @@ public class TrailEdge {
     @Column(name = "difficulty")
     private String difficulty;
 
-    @Column(name = "difficulty_score")
-    private Double difficultyScore;
-
     @Column(name = "nearest_summit_id")
     private String nearestSummitId;
 
     @Column(name = "qa_status")
     private String qaStatus;
 
-    public void updateDifficulty(Double difficultyScore, String difficulty) {
-        this.difficultyScore = difficultyScore;
+    public void updateDifficulty(String difficulty) {
         this.difficulty = difficulty;
     }
 }
