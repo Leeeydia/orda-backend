@@ -23,9 +23,9 @@ public class HikingController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PostMapping("/{recordId}/end")
-    public ResponseEntity<HikingEndResponse> endHiking(@PathVariable Long recordId) {
-        HikingEndResponse response = hikingService.endHiking(recordId);
+    @PostMapping("/{sessionId}/end")
+    public ResponseEntity<HikingEndResponse> endHiking(@PathVariable Long sessionId) {
+        HikingEndResponse response = hikingService.endHiking(sessionId);
         return ResponseEntity.ok(response);
     }
 }

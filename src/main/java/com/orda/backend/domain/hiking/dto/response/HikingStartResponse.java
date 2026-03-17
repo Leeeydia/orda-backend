@@ -9,6 +9,6 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class HikingStartResponse {
 
-    private Long recordId;
+    private Long sessionId;
     private LocalDateTime startedAt;
 }

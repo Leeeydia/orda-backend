@@ -20,23 +20,24 @@ public class HikingService {
 
     @Transactional
     public HikingStartResponse startHiking(HikingStartRequest request) {
-        HikingRecord record = HikingRecord.builder()
+        HikingRecord session = HikingRecord.builder()
                 .userId(request.getUserId())
                 .startedAt(LocalDateTime.now())
                 .build();
 
-        HikingRecord saved = hikingRecordRepository.save(record);
+        HikingRecord saved = hikingRecordRepository.save(session);
 
         return new HikingStartResponse(saved.getId(), saved.getStartedAt());
     }
 
     @Transactional
-    public HikingEndResponse endHiking(Long recordId) {
-        HikingRecord record = hikingRecordRepository.findById(recordId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 기록입니다. id=" + recordId));
+    public HikingEndResponse endHiking(Long sessionId) {
+        HikingRecord session = hikingRecordRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + sessionId));
 
-        record.end(LocalDateTime.now());
+        LocalDateTime endedAt = LocalDateTime.now();
+        session.complete(endedAt);
 
-        return new HikingEndResponse(record.getId(), record.getEndedAt());
+        return new HikingEndResponse(session.getId(), session.getEndedAt());
     }
 }
