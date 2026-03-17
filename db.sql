@@ -109,8 +109,8 @@ CREATE TABLE hiking_sessions
 (
     session_id             BIGSERIAL PRIMARY KEY,
     user_id                BIGINT      NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
-    status                 VARCHAR(20) NOT NULL DEFAULT 'active'
-        CHECK (status IN ('active', 'paused', 'completed', 'abandoned')),
+    status                 VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
+        CHECK (status IN ('ACTIVE', 'PAUSED', 'COMPLETED', 'ABANDONED')),
     started_at             TIMESTAMP   NOT NULL DEFAULT now(),
     ended_at               TIMESTAMP,
     total_distance_m       DOUBLE PRECISION,
@@ -125,7 +125,7 @@ CREATE TABLE hiking_sessions
 COMMENT
 ON TABLE  hiking_sessions IS '등산 세션 (기능정의서 No.3 등산 시작/종료, No.4 경로 저장)';
 COMMENT
-ON COLUMN hiking_sessions.status IS 'active: 진행중, paused: 일시정지, completed: 완료, abandoned: 포기';
+ON COLUMN hiking_sessions.status IS 'ACTIVE: 진행중, PAUSED: 일시정지, COMPLETED: 완료, ABANDONED: 포기';
 COMMENT
 ON COLUMN hiking_sessions.total_distance_m IS '총 이동 거리 (미터)';
 COMMENT
