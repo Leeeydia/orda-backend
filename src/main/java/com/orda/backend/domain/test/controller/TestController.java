@@ -1,4 +1,4 @@
-package com.orda.backend.common.test;
+package com.orda.backend.domain.test.controller;
 
 import com.orda.backend.common.response.ApiResponse;
 import org.springframework.web.bind.annotation.GetMapping;
