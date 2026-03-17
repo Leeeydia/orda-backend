@@ -13,4 +13,9 @@ public class TestController {
     public ApiResponse<String> test() {
         return ApiResponse.success("테스트 성공");
     }
+
+    @GetMapping("/error")
+    public ApiResponse<String> error() {
+        throw new IllegalArgumentException("잘못된 요청입니다.");
+    }
 }
