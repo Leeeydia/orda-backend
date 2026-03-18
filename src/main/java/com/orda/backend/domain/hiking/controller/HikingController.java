@@ -1,7 +1,9 @@
 package com.orda.backend.domain.hiking.controller;
 
+import com.orda.backend.domain.hiking.dto.request.GpsTrackRequest;
 import com.orda.backend.domain.hiking.dto.request.HikingStartRequest;
 import com.orda.backend.domain.hiking.dto.response.HikingEndResponse;
+import com.orda.backend.domain.hiking.dto.response.HikingSessionResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingStartResponse;
 import com.orda.backend.domain.hiking.service.HikingService;
 import jakarta.validation.Valid;
@@ -27,5 +29,18 @@ public class HikingController {
     public ResponseEntity<HikingEndResponse> endHiking(@PathVariable Long sessionId) {
         HikingEndResponse response = hikingService.endHiking(sessionId);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{sessionId}")
+    public ResponseEntity<HikingSessionResponse> getSession(@PathVariable Long sessionId) {
+        return ResponseEntity.ok(hikingService.getSession(sessionId));
+    }
+
+    @PostMapping("/{sessionId}/tracks")
+    public ResponseEntity<Void> saveGpsTrack(
+            @PathVariable Long sessionId,
+            @RequestBody GpsTrackRequest request) {
+        hikingService.saveGpsTrack(sessionId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 }
