@@ -1,11 +1,15 @@
 package com.orda.backend.domain.hiking.service;
 
 import com.orda.backend.domain.hiking.dto.request.HikingStartRequest;
+import com.orda.backend.domain.hiking.dto.request.SummitVerifyRequest;
 import com.orda.backend.domain.hiking.dto.response.HikingEndResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingSessionResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingStartResponse;
+import com.orda.backend.domain.hiking.dto.response.SummitVerifyResponse;
 import com.orda.backend.domain.hiking.entity.HikingRecord;
 import com.orda.backend.domain.hiking.repository.HikingRecordRepository;
+import com.orda.backend.domain.hiking.repository.NearestSummitResult;
+import com.orda.backend.domain.hiking.repository.SummitPointRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +22,7 @@ import java.time.LocalDateTime;
 public class HikingService {
 
     private final HikingRecordRepository hikingRecordRepository;
+    private final SummitPointRepository summitPointRepository;
 
     @Transactional
     public HikingStartResponse startHiking(HikingStartRequest request) {
@@ -48,4 +53,18 @@ public class HikingService {
         return HikingSessionResponse.from(record);
     }
 
+    public SummitVerifyResponse verifySummit(SummitVerifyRequest request) {
+        NearestSummitResult nearest = summitPointRepository
+                .findNearestSummit(request.getLatitude(), request.getLongitude())
+                .orElseThrow(() -> new IllegalArgumentException("정상 데이터가 없습니다."));
+
+        boolean verified = nearest.getDistance_m() <= nearest.getRadius_m();
+
+        return SummitVerifyResponse.builder()
+                .verified(verified)
+                .summitId(nearest.getSummit_id())
+                .summitName(nearest.getName())
+                .distanceM(nearest.getDistance_m())
+                .build();
+    }
 }
