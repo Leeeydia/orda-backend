@@ -119,7 +119,7 @@ public class TrailDifficultyService {
      * 나중에 user_time_factor 데이터가 확보되면 5변수로 확장 예정.
      */
     private double calculateDifficultyScore(TrailEdge edge) {
-        double slope = edge.getSlopePercent() != null ? edge.getSlopePercent() : 0.0;
+        double slope = edge.getSlopePercent() != null ?  edge.getSlopePercent() : 0.0;
         double elevDiff = edge.getElevationDiffM() != null ? edge.getElevationDiffM() : 0.0;
         double distance = edge.getDistanceM() != null ? edge.getDistanceM() : 0.0;
 
