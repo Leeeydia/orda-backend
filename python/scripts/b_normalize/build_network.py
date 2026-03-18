@@ -434,7 +434,7 @@ def build_initial_graph(
             "merge_status": "cleaned",
             "coords": coords,
 
-            # 내부 비교용 메타데이터 (최종 output에는 안 내보냄)
+            # 내부 비교용 메타데이터 (surface는 최종 output에도 포함)
             "source": segment["source"],
             "source_ref": segment["source_ref"],
             "name": segment["name"],
@@ -784,6 +784,7 @@ def build_final_output_features(
             "properties": {
                 "edge_id": edge["edge_id"],
                 "trail_id": edge["trail_id"],
+                "surface": edge.get("surface"),
                 "start_node_id": edge["start_node_id"],
                 "end_node_id": edge["end_node_id"],
                 "distance_m": edge["distance_m"],
