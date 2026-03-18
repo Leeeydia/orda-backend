@@ -269,8 +269,13 @@ def is_self_loop_edge(edge: dict) -> bool:
 
 
 def normalize_optional_value(value):
-    if value == "":
+    if value is None:
         return None
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped == "":
+            return None
+        return stripped
     return value
 
 
@@ -283,12 +288,53 @@ def get_source_priority(source: str | None) -> int:
     return 0
 
 
-def merge_raw_tags(existing_raw_tags, incoming_raw_tags):
+def choose_preferred_edge(existing_edge: dict, incoming_edge: dict) -> dict:
+    existing_priority = get_source_priority(existing_edge.get("source"))
+    incoming_priority = get_source_priority(incoming_edge.get("source"))
+
+    if incoming_priority > existing_priority:
+        return incoming_edge
+    if incoming_priority < existing_priority:
+        return existing_edge
+
+    existing_name = normalize_optional_value(existing_edge.get("name"))
+    incoming_name = normalize_optional_value(incoming_edge.get("name"))
+    if existing_name is None and incoming_name is not None:
+        return incoming_edge
+
+    existing_surface = normalize_optional_value(existing_edge.get("surface"))
+    incoming_surface = normalize_optional_value(incoming_edge.get("surface"))
+    if existing_surface is None and incoming_surface is not None:
+        return incoming_edge
+
+    return existing_edge
+
+
+def should_replace_representative_edge(existing_edge: dict, candidate_edge: dict) -> bool:
+    preferred = choose_preferred_edge(existing_edge, candidate_edge)
+    if preferred is candidate_edge:
+        return True
+    if preferred is existing_edge:
+        return False
+
+    candidate_points = len(candidate_edge.get("coords", []))
+    existing_points = len(existing_edge.get("coords", []))
+    return candidate_points < existing_points
+
+
+def merge_raw_tags(existing_raw_tags, incoming_raw_tags, existing_source=None, incoming_source=None):
     raw_tags1 = existing_raw_tags or {}
     raw_tags2 = incoming_raw_tags or {}
-    if isinstance(raw_tags1, dict) and isinstance(raw_tags2, dict):
-        return {**raw_tags2, **raw_tags1}
-    return raw_tags1 or raw_tags2
+
+    if not isinstance(raw_tags1, dict) or not isinstance(raw_tags2, dict):
+        return raw_tags1 or raw_tags2
+
+    existing_priority = get_source_priority(existing_source)
+    incoming_priority = get_source_priority(incoming_source)
+
+    if incoming_priority > existing_priority:
+        return {**raw_tags1, **raw_tags2}
+    return {**raw_tags2, **raw_tags1}
 
 
 def choose_preferred_value(
@@ -356,6 +402,8 @@ def merge_duplicate_edge_metadata(
     existing_edge["raw_tags"] = merge_raw_tags(
         existing_edge.get("raw_tags"),
         incoming_data.get("raw_tags"),
+        existing_edge.get("source"),
+        incoming_data.get("source"),
     )
 
     if incoming_source_priority > existing_source_priority:
@@ -572,7 +620,7 @@ def build_initial_graph(
         seen_edges_by_line_key[line_key] = edge
 
         saved_edge = seen_edges_by_node_pair.get(node_pair_key)
-        if saved_edge is None or len(edge["coords"]) < len(saved_edge["coords"]):
+        if saved_edge is None or should_replace_representative_edge(saved_edge, edge):
             seen_edges_by_node_pair[node_pair_key] = edge
 
     return edges, stats
@@ -625,7 +673,7 @@ def deduplicate_edges_after_split(
         seen_edges_by_line_key[line_key] = edge
 
         saved_edge = seen_edges_by_node_pair.get(node_pair_key)
-        if saved_edge is None or len(edge["coords"]) < len(saved_edge["coords"]):
+        if saved_edge is None or should_replace_representative_edge(saved_edge, edge):
             seen_edges_by_node_pair[node_pair_key] = edge
 
     return deduped_edges, stats
@@ -764,9 +812,13 @@ def merge_two_edges_through_node(
 
     distance_m = calculate_length_m(merged_coords)
 
+    preferred_edge = choose_preferred_edge(edge1, edge2)
+
     merged_raw_tags = merge_raw_tags(
         edge1.get("raw_tags"),
         edge2.get("raw_tags"),
+        edge1.get("source"),
+        edge2.get("source"),
     )
     merged_surface = choose_preferred_value(
         edge1.get("surface"),
@@ -777,7 +829,7 @@ def merge_two_edges_through_node(
 
     return {
         "edge_id": new_edge_id,
-        "trail_id": edge1["trail_id"],
+        "trail_id": preferred_edge["trail_id"],
         "start_node_id": other_start_node_id,
         "end_node_id": other_end_node_id,
         "distance_m": distance_m,
@@ -789,14 +841,39 @@ def merge_two_edges_through_node(
         "coords": merged_coords,
 
         # 내부 비교용 메타데이터는 하나로 유지
-        "source": edge1.get("source"),
-        "source_ref": edge1.get("source_ref"),
-        "name": edge1.get("name"),
+        "source": preferred_edge.get("source"),
+        "source_ref": preferred_edge.get("source_ref"),
+        "name": choose_preferred_value(
+            edge1.get("name"),
+            edge2.get("name"),
+            edge1.get("source"),
+            edge2.get("source"),
+        ),
         "surface": merged_surface,
-        "trail_type": edge1.get("trail_type"),
-        "mountain_name": edge1.get("mountain_name"),
-        "admin_region": edge1.get("admin_region"),
-        "is_official": edge1.get("is_official"),
+        "trail_type": choose_preferred_value(
+            edge1.get("trail_type"),
+            edge2.get("trail_type"),
+            edge1.get("source"),
+            edge2.get("source"),
+        ),
+        "mountain_name": choose_preferred_value(
+            edge1.get("mountain_name"),
+            edge2.get("mountain_name"),
+            edge1.get("source"),
+            edge2.get("source"),
+        ),
+        "admin_region": choose_preferred_value(
+            edge1.get("admin_region"),
+            edge2.get("admin_region"),
+            edge1.get("source"),
+            edge2.get("source"),
+        ),
+        "is_official": choose_preferred_value(
+            edge1.get("is_official"),
+            edge2.get("is_official"),
+            edge1.get("source"),
+            edge2.get("source"),
+        ),
         "raw_tags": merged_raw_tags,
     }
 
@@ -1135,6 +1212,9 @@ def build_network() -> None:
         edges, collapse_stats = collapse_pass_through_nodes(edges)
         total_collapse_stats["collapsed_degree2_node_count"] += collapse_stats["collapsed_degree2_node_count"]
         total_collapse_stats["merged_edge_count"] += collapse_stats["merged_edge_count"]
+
+        if collapse_stats["collapsed_degree2_node_count"] > 0:
+            edges, _ = deduplicate_edges_after_split(edges)
 
         edges, prune_stats = prune_dangling_edges(edges)
         total_prune_stats["isolated_removed_count"] += prune_stats["isolated_removed_count"]
