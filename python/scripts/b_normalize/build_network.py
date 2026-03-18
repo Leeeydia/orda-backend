@@ -268,6 +268,126 @@ def is_self_loop_edge(edge: dict) -> bool:
     return edge["start_node_id"] == edge["end_node_id"]
 
 
+def normalize_optional_value(value):
+    if value == "":
+        return None
+    return value
+
+
+def get_source_priority(source: str | None) -> int:
+    normalized = str(source).strip().upper() if source is not None else ""
+    if normalized == "PUBLIC":
+        return 2
+    if normalized == "OSM":
+        return 1
+    return 0
+
+
+def merge_raw_tags(existing_raw_tags, incoming_raw_tags):
+    raw_tags1 = existing_raw_tags or {}
+    raw_tags2 = incoming_raw_tags or {}
+    if isinstance(raw_tags1, dict) and isinstance(raw_tags2, dict):
+        return {**raw_tags2, **raw_tags1}
+    return raw_tags1 or raw_tags2
+
+
+def choose_preferred_value(
+        existing_value,
+        incoming_value,
+        existing_source,
+        incoming_source,
+):
+    value1 = normalize_optional_value(existing_value)
+    value2 = normalize_optional_value(incoming_value)
+
+    if value1 is None and value2 is None:
+        return None
+    if value1 is None:
+        return value2
+    if value2 is None:
+        return value1
+
+    existing_priority = get_source_priority(existing_source)
+    incoming_priority = get_source_priority(incoming_source)
+
+    if incoming_priority > existing_priority:
+        return value2
+    return value1
+
+
+def merge_duplicate_edge_metadata(
+        existing_edge: dict,
+        incoming_data: dict,
+) -> None:
+    existing_source_priority = get_source_priority(existing_edge.get("source"))
+    incoming_source_priority = get_source_priority(incoming_data.get("source"))
+
+    existing_edge["name"] = choose_preferred_value(
+        existing_edge.get("name"),
+        incoming_data.get("name"),
+        existing_edge.get("source"),
+        incoming_data.get("source"),
+    )
+    existing_edge["surface"] = choose_preferred_value(
+        existing_edge.get("surface"),
+        incoming_data.get("surface"),
+        existing_edge.get("source"),
+        incoming_data.get("source"),
+    )
+    existing_edge["trail_type"] = choose_preferred_value(
+        existing_edge.get("trail_type"),
+        incoming_data.get("trail_type"),
+        existing_edge.get("source"),
+        incoming_data.get("source"),
+    )
+    existing_edge["mountain_name"] = choose_preferred_value(
+        existing_edge.get("mountain_name"),
+        incoming_data.get("mountain_name"),
+        existing_edge.get("source"),
+        incoming_data.get("source"),
+    )
+    existing_edge["admin_region"] = choose_preferred_value(
+        existing_edge.get("admin_region"),
+        incoming_data.get("admin_region"),
+        existing_edge.get("source"),
+        incoming_data.get("source"),
+    )
+
+    existing_edge["raw_tags"] = merge_raw_tags(
+        existing_edge.get("raw_tags"),
+        incoming_data.get("raw_tags"),
+    )
+
+    if incoming_source_priority > existing_source_priority:
+        existing_edge["trail_id"] = incoming_data.get("trail_id", existing_edge["trail_id"])
+        existing_edge["source"] = incoming_data.get("source")
+        existing_edge["source_ref"] = incoming_data.get("source_ref")
+        existing_edge["is_official"] = incoming_data.get("is_official")
+    else:
+        existing_edge["source_ref"] = choose_preferred_value(
+            existing_edge.get("source_ref"),
+            incoming_data.get("source_ref"),
+            existing_edge.get("source"),
+            incoming_data.get("source"),
+        )
+        existing_edge["is_official"] = choose_preferred_value(
+            existing_edge.get("is_official"),
+            incoming_data.get("is_official"),
+            existing_edge.get("source"),
+            incoming_data.get("source"),
+        )
+
+    incoming_segment_order = incoming_data.get("source_segment_order")
+    incoming_segment_orders = incoming_data.get("source_segment_orders", [])
+
+    merged_orders = set(existing_edge.get("source_segment_orders", []))
+    if incoming_segment_order is not None:
+        merged_orders.add(incoming_segment_order)
+    merged_orders.update(incoming_segment_orders)
+    existing_edge["source_segment_orders"] = sorted(merged_orders)
+
+
+
 # =========================================================
 # 3. 노드 레지스트리
 # =========================================================
@@ -372,7 +492,7 @@ def build_initial_graph(
 ) -> tuple[dict[str, dict], dict]:
 
     edges: dict[str, dict] = {}
-    seen_line_keys: set[tuple] = set()
+    seen_edges_by_line_key: dict[tuple, dict] = {}
     seen_edges_by_node_pair: dict[tuple, dict] = {}
     next_edge_number = 1
 
@@ -394,8 +514,10 @@ def build_initial_graph(
             continue
 
         line_key = make_line_key(coords, segment["is_bidirectional"])
-        if line_key in seen_line_keys:
+        existing_line_edge = seen_edges_by_line_key.get(line_key)
+        if existing_line_edge is not None:
             print(f"[중복 제거: 동일 좌표] trail_id={segment['trail_id']}, segment_order={segment['source_segment_order']}")
+            merge_duplicate_edge_metadata(existing_line_edge, segment)
             stats["duplicate_removed_count"] += 1
             continue
 
@@ -417,6 +539,7 @@ def build_initial_graph(
                 is_bidirectional=segment["is_bidirectional"],
         ):
             print(f"[중복 제거: 동일 노드쌍] trail_id={segment['trail_id']}, segment_order={segment['source_segment_order']}")
+            merge_duplicate_edge_metadata(existing_edge, segment)
             stats["duplicate_removed_count"] += 1
             continue
 
@@ -446,13 +569,66 @@ def build_initial_graph(
             "raw_tags": segment["raw_tags"],
         }
         edges[edge_id] = edge
-        seen_line_keys.add(line_key)
+        seen_edges_by_line_key[line_key] = edge
 
         saved_edge = seen_edges_by_node_pair.get(node_pair_key)
         if saved_edge is None or len(edge["coords"]) < len(saved_edge["coords"]):
             seen_edges_by_node_pair[node_pair_key] = edge
 
     return edges, stats
+
+
+def deduplicate_edges_after_split(
+        edges: dict[str, dict],
+) -> tuple[dict[str, dict], dict]:
+    deduped_edges: dict[str, dict] = {}
+    seen_edges_by_line_key: dict[tuple, dict] = {}
+    seen_edges_by_node_pair: dict[tuple, dict] = {}
+
+    stats = {
+        "post_split_duplicate_removed_count": 0,
+        "post_split_same_line_removed_count": 0,
+        "post_split_same_node_pair_removed_count": 0,
+    }
+
+    for edge_id in sorted(edges.keys()):
+        edge = edges[edge_id]
+
+        line_key = make_line_key(edge["coords"], edge["is_bidirectional"])
+        existing_line_edge = seen_edges_by_line_key.get(line_key)
+        if existing_line_edge is not None:
+            merge_duplicate_edge_metadata(existing_line_edge, edge)
+            stats["post_split_duplicate_removed_count"] += 1
+            stats["post_split_same_line_removed_count"] += 1
+            continue
+
+        node_pair_key = make_node_pair_key(
+            edge["start_node_id"],
+            edge["end_node_id"],
+            edge["is_bidirectional"],
+        )
+
+        existing_edge = seen_edges_by_node_pair.get(node_pair_key)
+        if existing_edge and is_effectively_duplicate_edge(
+                existing_edge=existing_edge,
+                start_node_id=edge["start_node_id"],
+                end_node_id=edge["end_node_id"],
+                distance_m=edge["distance_m"],
+                is_bidirectional=edge["is_bidirectional"],
+        ):
+            merge_duplicate_edge_metadata(existing_edge, edge)
+            stats["post_split_duplicate_removed_count"] += 1
+            stats["post_split_same_node_pair_removed_count"] += 1
+            continue
+
+        deduped_edges[edge_id] = edge
+        seen_edges_by_line_key[line_key] = edge
+
+        saved_edge = seen_edges_by_node_pair.get(node_pair_key)
+        if saved_edge is None or len(edge["coords"]) < len(saved_edge["coords"]):
+            seen_edges_by_node_pair[node_pair_key] = edge
+
+    return deduped_edges, stats
 
 
 def build_node_to_edges(edges: dict[str, dict]) -> dict[str, set[str]]:
@@ -509,7 +685,6 @@ def should_collapse_degree2_node(
     # 핵심 속성이 다르면 경계점으로 보고 유지
     compare_fields = [
         "source",
-        "surface",
         "trail_type",
         "mountain_name",
         "admin_region",
@@ -518,6 +693,11 @@ def should_collapse_degree2_node(
     for field in compare_fields:
         if edge1.get(field) != edge2.get(field):
             return False
+
+    surface1 = normalize_optional_value(edge1.get("surface"))
+    surface2 = normalize_optional_value(edge2.get("surface"))
+    if surface1 is not None and surface2 is not None and surface1 != surface2:
+        return False
 
     # 양옆이 같은 노드로 연결되면(루프 형태) 병합하지 않음
     other1 = edge1["end_node_id"] if edge1["start_node_id"] == node_id else edge1["start_node_id"]
@@ -584,12 +764,16 @@ def merge_two_edges_through_node(
 
     distance_m = calculate_length_m(merged_coords)
 
-    raw_tags1 = edge1.get("raw_tags") or {}
-    raw_tags2 = edge2.get("raw_tags") or {}
-    if isinstance(raw_tags1, dict) and isinstance(raw_tags2, dict):
-        merged_raw_tags = {**raw_tags2, **raw_tags1}  # edge1 우선
-    else:
-        merged_raw_tags = raw_tags1 or raw_tags2
+    merged_raw_tags = merge_raw_tags(
+        edge1.get("raw_tags"),
+        edge2.get("raw_tags"),
+    )
+    merged_surface = choose_preferred_value(
+        edge1.get("surface"),
+        edge2.get("surface"),
+        edge1.get("source"),
+        edge2.get("source"),
+    )
 
     return {
         "edge_id": new_edge_id,
@@ -608,7 +792,7 @@ def merge_two_edges_through_node(
         "source": edge1.get("source"),
         "source_ref": edge1.get("source_ref"),
         "name": edge1.get("name"),
-        "surface": edge1.get("surface"),
+        "surface": merged_surface,
         "trail_type": edge1.get("trail_type"),
         "mountain_name": edge1.get("mountain_name"),
         "admin_region": edge1.get("admin_region"),
@@ -933,6 +1117,13 @@ def build_network() -> None:
     print("----- 기존 node 기준 edge 분할 완료 -----")
     print(f"분할 대상 원본 edge 수: {split_stats['split_source_edge_count']}")
     print(f"분할 후 생성된 edge 수: {split_stats['created_split_edge_count']}")
+
+    edges, post_split_dedup_stats = deduplicate_edges_after_split(edges)
+
+    print("----- 분할 후 재중복 제거 완료 -----")
+    print(f"분할 후 중복 제거 수: {post_split_dedup_stats['post_split_duplicate_removed_count']}")
+    print(f"동일 좌표 재중복 제거 수: {post_split_dedup_stats['post_split_same_line_removed_count']}")
+    print(f"동일 노드쌍 재중복 제거 수: {post_split_dedup_stats['post_split_same_node_pair_removed_count']}")
 
     total_collapse_stats = {"collapsed_degree2_node_count": 0, "merged_edge_count": 0}
     total_prune_stats = {"isolated_removed_count": 0, "dangling_removed_count": 0, "iterations": 0}
