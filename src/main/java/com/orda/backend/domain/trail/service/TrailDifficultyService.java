@@ -19,21 +19,15 @@ public class TrailDifficultyService {
     private final TrailEdgeRepository trailEdgeRepository;
 
     // ──────────────────────────────────────────────
-    // 난이도 가중치
+    // 난이도 가중치 (4변수 고정)
     // 기능정의서 No.23 원본: slope 0.35 + elevation 0.25 + distance 0.15 + terrain 0.15 + user_time 0.10
-    // 현재: surface 데이터 있으면 4변수, 없으면 3변수 자동 전환
+    // 현재: user_time_factor 데이터 미확보로 4변수 운영
+    // user_time_factor 확보 시 5변수로 확장 예정
     // ──────────────────────────────────────────────
-
-    // 4변수 가중치 (surface 데이터 있을 때)
-    private static final double WEIGHT_SLOPE_4V = 0.40;
-    private static final double WEIGHT_ELEVATION_4V = 0.25;
-    private static final double WEIGHT_DISTANCE_4V = 0.15;
-    private static final double WEIGHT_TERRAIN_4V = 0.20;
-
-    // 3변수 가중치 (surface 데이터 없을 때)
-    private static final double WEIGHT_SLOPE_3V = 0.45;
-    private static final double WEIGHT_ELEVATION_3V = 0.30;
-    private static final double WEIGHT_DISTANCE_3V = 0.25;
+    private static final double WEIGHT_SLOPE = 0.40;
+    private static final double WEIGHT_ELEVATION = 0.25;
+    private static final double WEIGHT_DISTANCE = 0.15;
+    private static final double WEIGHT_TERRAIN = 0.20;
 
     // 정규화 기준값
     private static final double MAX_SLOPE = 35.0;
@@ -46,6 +40,7 @@ public class TrailDifficultyService {
     //   - GPS 측량으로 1,700km 탐방로의 노면 상태를 조사
     //   - 매우쉬움/쉬움/보통/어려움/매우어려움 5단계 분류
     //   - 0~100 등간격(20점 간격) 변환 적용
+    //   - null일 때 60점(보통): 전체 탐방로의 69%가 보통 등급
     // ──────────────────────────────────────────────
     private static final double DEFAULT_TERRAIN_SCORE = 60.0;
 
@@ -115,34 +110,24 @@ public class TrailDifficultyService {
     /**
      * 난이도 점수 계산 (0~100)
      *
-     * surface 데이터가 있으면 4변수 공식, 없으면 3변수 공식을 자동 적용한다.
+     * 항상 4변수 공식을 사용한다.
+     * surface가 null이면 기본값 60점(보통)을 적용한다.
      * 나중에 user_time_factor 데이터가 확보되면 5변수로 확장 예정.
      */
     private double calculateDifficultyScore(TrailEdge edge) {
-        double slope = edge.getSlopePercent() != null ?  edge.getSlopePercent() : 0.0;
+        double slope = edge.getSlopePercent() != null ? edge.getSlopePercent() : 0.0;
         double elevDiff = edge.getElevationDiffM() != null ? edge.getElevationDiffM() : 0.0;
         double distance = edge.getDistanceM() != null ? edge.getDistanceM() : 0.0;
+        double terrainScore = convertSurfaceToScore(edge.getSurface());
 
         double normalizedSlope = normalize(Math.abs(slope), MAX_SLOPE);
         double normalizedElev = normalize(Math.abs(elevDiff), MAX_ELEVATION_DIFF);
         double normalizedDist = normalize(distance, MAX_DISTANCE);
 
-        double score;
-
-        if (edge.getSurface() != null) {
-            // 4변수 공식 (surface 데이터 있음)
-            double terrainScore = convertSurfaceToScore(edge.getSurface());
-
-            score = WEIGHT_SLOPE_4V * normalizedSlope
-                    + WEIGHT_ELEVATION_4V * normalizedElev
-                    + WEIGHT_DISTANCE_4V * normalizedDist
-                    + WEIGHT_TERRAIN_4V * terrainScore;
-        } else {
-            // 3변수 공식 (surface 데이터 없음)
-            score = WEIGHT_SLOPE_3V * normalizedSlope
-                    + WEIGHT_ELEVATION_3V * normalizedElev
-                    + WEIGHT_DISTANCE_3V * normalizedDist;
-        }
+        double score = WEIGHT_SLOPE * normalizedSlope
+                + WEIGHT_ELEVATION * normalizedElev
+                + WEIGHT_DISTANCE * normalizedDist
+                + WEIGHT_TERRAIN * terrainScore;
 
         return Math.round(score * 10.0) / 10.0;
     }
@@ -152,9 +137,12 @@ public class TrailDifficultyService {
      *
      * 근거: 국립공원관리공단 탐방로 등급제(2013)
      * 5단계(매우쉬움~매우어려움)를 0~100 등간격 변환
-     * 매핑되지 않는 값은 '보통(60점)'으로 처리
+     * null 또는 매핑되지 않는 값은 '보통(60점)'으로 처리
      */
     private double convertSurfaceToScore(String surface) {
+        if (surface == null) {
+            return DEFAULT_TERRAIN_SCORE;
+        }
         return SURFACE_SCORE_MAP.getOrDefault(surface.toLowerCase(), DEFAULT_TERRAIN_SCORE);
     }
 
