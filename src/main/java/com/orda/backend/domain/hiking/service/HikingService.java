@@ -2,6 +2,7 @@ package com.orda.backend.domain.hiking.service;
 
 import com.orda.backend.domain.hiking.dto.request.HikingStartRequest;
 import com.orda.backend.domain.hiking.dto.response.HikingEndResponse;
+import com.orda.backend.domain.hiking.dto.response.HikingSessionResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingStartResponse;
 import com.orda.backend.domain.hiking.entity.HikingRecord;
 import com.orda.backend.domain.hiking.repository.HikingRecordRepository;
@@ -40,4 +41,11 @@ public class HikingService {
 
         return new HikingEndResponse(session.getId(), session.getEndedAt());
     }
+
+    public HikingSessionResponse getSession(Long sessionId) {
+        HikingRecord record = hikingRecordRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + sessionId));
+        return HikingSessionResponse.from(record);
+    }
+
 }
