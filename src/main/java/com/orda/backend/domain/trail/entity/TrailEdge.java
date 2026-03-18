@@ -45,6 +45,9 @@ public class TrailEdge {
     @Column(name = "qa_status")
     private String qaStatus;
 
+    @Column(name = "surface")
+    private String surface;
+
     public void updateDifficulty(String difficulty) {
         this.difficulty = difficulty;
     }
