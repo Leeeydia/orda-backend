@@ -4,6 +4,7 @@ import json
 from typing import Any
 
 import psycopg2
+from psycopg2.extras import execute_values
 
 from config import (
     DB_HOST,
@@ -30,126 +31,135 @@ def get_connection():
 
 
 # ──────────────────────────────────────────────
+# 유틸
+# ──────────────────────────────────────────────
+
+def table_exists(cursor, table_name: str) -> bool:
+    """public 스키마에 해당 테이블이 존재하는지 확인한다."""
+    cursor.execute(
+        "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = %s)",
+        (table_name,),
+    )
+    return cursor.fetchone()[0]
+
+
+# ──────────────────────────────────────────────
 # 적재 함수
 # ──────────────────────────────────────────────
 
 def load_nodes(cursor, features: list[dict[str, Any]]) -> int:
-    """node_with_elevation.geojson → trail_nodes 테이블에 적재한다."""
+    """node_with_elevation.geojson → trail_nodes 테이블에 배치 적재한다."""
     sql = """
           INSERT INTO trail_nodes (
               node_id, node_type, degree,
               elevation_m, elevation_status, qa_status,
               geom
-          ) VALUES (
-                       %s, %s, %s,
-                       %s, %s, %s,
-                       ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326)
-                   )
-              ON CONFLICT (node_id) DO NOTHING \
+          ) VALUES %s
+              ON CONFLICT (node_id) DO NOTHING
           """
 
-    count = 0
+    template = "(%(node_id)s, %(node_type)s, %(degree)s, %(elevation_m)s, %(elevation_status)s, %(qa_status)s, ST_SetSRID(ST_GeomFromGeoJSON(%(geom)s), 4326))"
+
+    rows = []
     for feat in features:
         props = feat.get("properties", {})
         geom = feat.get("geometry")
-
         if not geom:
             continue
+        rows.append({
+            "node_id": props.get("node_id"),
+            "node_type": props.get("node_type"),
+            "degree": props.get("degree"),
+            "elevation_m": props.get("elevation_m"),
+            "elevation_status": props.get("elevation_status"),
+            "qa_status": props.get("qa_status"),
+            "geom": json.dumps(geom),
+        })
 
-        cursor.execute(sql, (
-            props.get("node_id"),
-            props.get("node_type"),
-            props.get("degree"),
-            props.get("elevation_m"),
-            props.get("elevation_status"),
-            props.get("qa_status"),
-            json.dumps(geom),
-        ))
-        count += 1
+    if not rows:
+        return 0
 
-    return count
+    execute_values(cursor, sql, rows, template=template, page_size=1000)
+    return cursor.rowcount
 
 
 def load_edges(cursor, features: list[dict[str, Any]]) -> int:
-    """final_trail_dataset.geojson → trail_edges 테이블에 적재한다."""
+    """final_trail_dataset.geojson → trail_edges 테이블에 배치 적재한다."""
     sql = """
           INSERT INTO trail_edges (
               edge_id, start_node_id, end_node_id,
               distance_m, elevation_start_m, elevation_end_m,
               elevation_diff_m, slope_percent, difficulty,
-              nearest_summit_id, qa_status,
+              surface, nearest_summit_id, qa_status,
               geom
-          ) VALUES (
-                       %s, %s, %s,
-                       %s, %s, %s,
-                       %s, %s, %s,
-                       %s, %s,
-                       ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326)
-                   )
-              ON CONFLICT (edge_id) DO NOTHING \
+          ) VALUES %s
+              ON CONFLICT (edge_id) DO NOTHING
           """
 
-    count = 0
+    template = "(%(edge_id)s, %(start_node_id)s, %(end_node_id)s, %(distance_m)s, %(elevation_start_m)s, %(elevation_end_m)s, %(elevation_diff_m)s, %(slope_percent)s, %(difficulty)s, %(surface)s, %(nearest_summit_id)s, %(qa_status)s, ST_SetSRID(ST_GeomFromGeoJSON(%(geom)s), 4326))"
+
+    rows = []
     for feat in features:
         props = feat.get("properties", {})
         geom = feat.get("geometry")
-
         if not geom:
             continue
+        rows.append({
+            "edge_id": props.get("edge_id"),
+            "start_node_id": props.get("start_node_id"),
+            "end_node_id": props.get("end_node_id"),
+            "distance_m": props.get("distance_m"),
+            "elevation_start_m": props.get("elevation_start_m"),
+            "elevation_end_m": props.get("elevation_end_m"),
+            "elevation_diff_m": props.get("elevation_diff_m"),
+            "slope_percent": props.get("slope_percent"),
+            "difficulty": props.get("difficulty"),
+            "surface": props.get("surface"),
+            "nearest_summit_id": props.get("nearest_summit_id"),
+            "qa_status": props.get("qa_status"),
+            "geom": json.dumps(geom),
+        })
 
-        cursor.execute(sql, (
-            props.get("edge_id"),
-            props.get("start_node_id"),
-            props.get("end_node_id"),
-            props.get("distance_m"),
-            props.get("elevation_start_m"),
-            props.get("elevation_end_m"),
-            props.get("elevation_diff_m"),
-            props.get("slope_percent"),
-            props.get("difficulty"),
-            props.get("nearest_summit_id"),
-            props.get("qa_status"),
-            json.dumps(geom),
-        ))
-        count += 1
+    if not rows:
+        return 0
 
-    return count
+    execute_values(cursor, sql, rows, template=template, page_size=1000)
+    return cursor.rowcount
 
 
 def load_summits(cursor, features: list[dict[str, Any]]) -> int:
-    """summit_points.geojson → summit_points 테이블에 적재한다."""
+    """summit_points.geojson → summit_points 테이블에 배치 적재한다."""
     sql = """
           INSERT INTO summit_points (
               summit_id, name, elevation_m,
               source, radius_m,
               geom
-          ) VALUES (
-                       %s, %s, %s,
-                       %s, %s,
-                       ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326)
-                   )
-              ON CONFLICT (summit_id) DO NOTHING \
+          ) VALUES %s
+              ON CONFLICT (summit_id) DO NOTHING
           """
 
-    count = 0
+    template = "(%(summit_id)s, %(name)s, %(elevation_m)s, %(source)s, %(radius_m)s, ST_SetSRID(ST_GeomFromGeoJSON(%(geom)s), 4326))"
+
+    rows = []
     for feat in features:
         props = feat.get("properties", {})
         geom = feat.get("geometry")
-
         if not geom:
             continue
+        rows.append({
+            "summit_id": props.get("summit_id"),
+            "name": props.get("name"),
+            "elevation_m": props.get("elevation_m"),
+            "source": props.get("source"),
+            "radius_m": props.get("radius_m"),
+            "geom": json.dumps(geom),
+        })
 
-        cursor.execute(sql, (
-            props.get("summit_id"),
-            props.get("name"),
-            props.get("elevation_m"),
-            props.get("source"),
-            props.get("radius_m"),
-            json.dumps(geom),
-        ))
-        count += 1
+    if not rows:
+        return 0
 
-    return count
+    execute_values(cursor, sql, rows, template=template, page_size=1000)
+    return cursor.rowcount
 
 
 # ──────────────────────────────────────────────
@@ -171,17 +181,14 @@ def verify_spatial(cursor) -> None:
     """공간 데이터가 정상인지 간단히 확인한다."""
     print("\n[공간 데이터 검증]")
 
-    # node geometry null 체크
     cursor.execute("SELECT COUNT(*) FROM trail_nodes WHERE geom IS NULL")
     null_nodes = cursor.fetchone()[0]
     print(f"  trail_nodes geom NULL: {null_nodes}개")
 
-    # edge geometry null 체크
     cursor.execute("SELECT COUNT(*) FROM trail_edges WHERE geom IS NULL")
     null_edges = cursor.fetchone()[0]
     print(f"  trail_edges geom NULL: {null_edges}개")
 
-    # SRID 확인 (샘플 1개)
     cursor.execute("SELECT ST_SRID(geom) FROM trail_nodes LIMIT 1")
     row = cursor.fetchone()
     if row:
@@ -192,7 +199,6 @@ def verify_spatial(cursor) -> None:
     if row:
         print(f"  trail_edges SRID: {row[0]}")
 
-    # 외래키 정합성: edge의 node 참조가 실제로 존재하는지
     cursor.execute("""
                    SELECT COUNT(*) FROM trail_edges e
                    WHERE NOT EXISTS (
@@ -213,7 +219,6 @@ def verify_spatial(cursor) -> None:
 def main() -> None:
     print("[PostGIS 적재] 시작...")
 
-    # 1. GeoJSON 로딩
     print("\n[1] GeoJSON 로딩")
     node_features = read_geojson_features(NODE_ELEVATION_PATH)
     edge_features = read_geojson_features(FINAL_TRAIL_DATASET_PATH)
@@ -223,19 +228,21 @@ def main() -> None:
     print(f"  edges: {len(edge_features)}개")
     print(f"  summits: {len(summit_features)}개")
 
-    # 2. DB 접속 및 적재
     print("\n[2] DB 접속 및 적재")
     conn = get_connection()
     cursor = conn.cursor()
 
     try:
-        # 기존 데이터 삭제 (재실행 시 중복 방지)
         print("  기존 데이터 초기화...")
+
+        if table_exists(cursor, "summit_verifications"):
+            cursor.execute("DELETE FROM summit_verifications")
+            print("    summit_verifications 초기화 완료")
+
         cursor.execute("DELETE FROM trail_edges")
         cursor.execute("DELETE FROM trail_nodes")
         cursor.execute("DELETE FROM summit_points")
 
-        # 적재 순서: nodes → edges (외래키 때문에 순서 중요)
         node_count = load_nodes(cursor, node_features)
         print(f"  trail_nodes 적재: {node_count}건")
 
@@ -245,11 +252,9 @@ def main() -> None:
         summit_count = load_summits(cursor, summit_features)
         print(f"  summit_points 적재: {summit_count}건")
 
-        # 3. 검증
         verify_counts(cursor)
         verify_spatial(cursor)
 
-        # 4. 커밋
         conn.commit()
         print("\n[완료] 적재 성공, 커밋됨")
 
