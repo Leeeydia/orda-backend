@@ -236,12 +236,11 @@ def main() -> None:
         print("  기존 데이터 초기화...")
 
         if table_exists(cursor, "summit_verifications"):
-            cursor.execute("DELETE FROM summit_verifications")
+            cursor.execute("TRUNCATE summit_verifications")
             print("    summit_verifications 초기화 완료")
 
-        cursor.execute("DELETE FROM trail_edges")
-        cursor.execute("DELETE FROM trail_nodes")
-        cursor.execute("DELETE FROM summit_points")
+        cursor.execute("TRUNCATE trail_edges, trail_nodes, summit_points CASCADE")
+        print("    trail 테이블 초기화 완료")
 
         node_count = load_nodes(cursor, node_features)
         print(f"  trail_nodes 적재: {node_count}건")
