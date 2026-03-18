@@ -2,17 +2,13 @@ package com.orda.backend.domain.hiking.service;
 
 import com.orda.backend.domain.hiking.dto.request.GpsTrackRequest;
 import com.orda.backend.domain.hiking.dto.request.HikingStartRequest;
-import com.orda.backend.domain.hiking.dto.request.SummitVerifyRequest;
 import com.orda.backend.domain.hiking.dto.response.HikingEndResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingSessionResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingStartResponse;
-import com.orda.backend.domain.hiking.dto.response.SummitVerifyResponse;
 import com.orda.backend.domain.hiking.entity.GpsTrack;
 import com.orda.backend.domain.hiking.entity.HikingRecord;
 import com.orda.backend.domain.hiking.repository.GpsTrackRepository;
 import com.orda.backend.domain.hiking.repository.HikingRecordRepository;
-import com.orda.backend.domain.hiking.repository.NearestSummitResult;
-import com.orda.backend.domain.hiking.repository.SummitPointRepository;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -28,7 +24,6 @@ import java.time.LocalDateTime;
 public class HikingService {
 
     private final HikingRecordRepository hikingRecordRepository;
-    private final SummitPointRepository summitPointRepository;
     private final GpsTrackRepository gpsTrackRepository;
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
@@ -59,21 +54,6 @@ public class HikingService {
         HikingRecord record = hikingRecordRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + sessionId));
         return HikingSessionResponse.from(record);
-    }
-
-    public SummitVerifyResponse verifySummit(SummitVerifyRequest request) {
-        NearestSummitResult nearest = summitPointRepository
-                .findNearestSummit(request.getLatitude(), request.getLongitude())
-                .orElseThrow(() -> new IllegalArgumentException("정상 데이터가 없습니다."));
-
-        boolean verified = nearest.getDistance_m() <= nearest.getRadius_m();
-
-        return SummitVerifyResponse.builder()
-                .verified(verified)
-                .summitId(nearest.getSummit_id())
-                .summitName(nearest.getName())
-                .distanceM(nearest.getDistance_m())
-                .build();
     }
 
     @Transactional

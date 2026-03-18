@@ -2,11 +2,9 @@ package com.orda.backend.domain.hiking.controller;
 
 import com.orda.backend.domain.hiking.dto.request.GpsTrackRequest;
 import com.orda.backend.domain.hiking.dto.request.HikingStartRequest;
-import com.orda.backend.domain.hiking.dto.request.SummitVerifyRequest;
 import com.orda.backend.domain.hiking.dto.response.HikingEndResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingSessionResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingStartResponse;
-import com.orda.backend.domain.hiking.dto.response.SummitVerifyResponse;
 import com.orda.backend.domain.hiking.service.HikingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -36,11 +34,6 @@ public class HikingController {
     @GetMapping("/{sessionId}")
     public ResponseEntity<HikingSessionResponse> getSession(@PathVariable Long sessionId) {
         return ResponseEntity.ok(hikingService.getSession(sessionId));
-    }
-
-    @PostMapping("/summit/verify")
-    public ResponseEntity<SummitVerifyResponse> verifySummit(@RequestBody SummitVerifyRequest request) {
-        return ResponseEntity.ok(hikingService.verifySummit(request));
     }
 
     @PostMapping("/{sessionId}/tracks")

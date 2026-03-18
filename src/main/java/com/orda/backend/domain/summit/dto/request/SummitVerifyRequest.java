@@ -1,4 +1,4 @@
-package com.orda.backend.domain.hiking.dto.request;
+package com.orda.backend.domain.summit.dto.request;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

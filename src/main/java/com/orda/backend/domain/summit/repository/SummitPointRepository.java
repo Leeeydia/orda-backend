@@ -1,6 +1,6 @@
-package com.orda.backend.domain.hiking.repository;
+package com.orda.backend.domain.summit.repository;
 
-import com.orda.backend.domain.hiking.entity.SummitPoint;
+import com.orda.backend.domain.summit.entity.SummitPoint;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

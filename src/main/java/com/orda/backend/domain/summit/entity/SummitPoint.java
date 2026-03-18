@@ -1,4 +1,4 @@
-package com.orda.backend.domain.hiking.entity;
+package com.orda.backend.domain.summit.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;

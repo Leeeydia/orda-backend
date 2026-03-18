@@ -1,4 +1,4 @@
-package com.orda.backend.domain.hiking.repository;
+package com.orda.backend.domain.summit.repository;
 
 public interface NearestSummitResult {
     String getSummit_id();
