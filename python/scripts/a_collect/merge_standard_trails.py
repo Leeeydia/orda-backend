@@ -123,7 +123,13 @@ def normalize_feature(feature: dict[str, Any], source_label: str) -> dict[str, A
             f"{source_label}: source 값이 예상과 다릅니다. expected={source_label}, actual={actual_source}"
         )
 
-    new_trail_id = f"{source_label}_{original_trail_id}"
+    upper_trail_id = original_trail_id.upper()
+    source_prefix = f"{source_label}_"
+
+    if upper_trail_id.startswith(source_prefix):
+        new_trail_id = original_trail_id
+    else:
+        new_trail_id = f"{source_label}_{original_trail_id}"
 
     raw_tags = properties.get("raw_tags")
     if raw_tags is None or not isinstance(raw_tags, dict):
