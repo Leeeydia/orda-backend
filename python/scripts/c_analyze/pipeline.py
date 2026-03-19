@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any, Optional
 
 import rasterio
+import numpy as np
+from scipy.spatial import cKDTree
 
 from config import (
     INPUT_EDGES_PATH,
@@ -214,6 +216,63 @@ def build_summit_list(
         })
 
     return summits
+
+
+def build_summit_kdtree(
+        summit_list: list[dict[str, Any]],
+) -> Optional[tuple[cKDTree, list[str]]]:
+    """
+    summit 좌표로 KDTree를 구축한다.
+    반환: (kdtree, summit_id_list) 또는 summit이 없으면 None
+
+    좌표를 라디안 변환 후 3D 직교좌표(x, y, z)로 변환하여
+    유클리드 거리 기반 KDTree에서 정확한 최근접 검색이 가능하게 한다.
+    """
+    if not summit_list:
+        return None
+
+    R = 6371000.0
+    coords = []
+    ids = []
+
+    for summit in summit_list:
+        lat_rad = math.radians(summit["lat"])
+        lng_rad = math.radians(summit["lng"])
+        x = R * math.cos(lat_rad) * math.cos(lng_rad)
+        y = R * math.cos(lat_rad) * math.sin(lng_rad)
+        z = R * math.sin(lat_rad)
+        coords.append([x, y, z])
+        ids.append(summit["summit_id"])
+
+    tree = cKDTree(np.array(coords))
+    return tree, ids
+
+
+def find_nearest_summit_id_kdtree(
+        midpoint_lng: float,
+        midpoint_lat: float,
+        summit_kdtree: tuple[cKDTree, list[str]],
+        max_distance_m: float,
+) -> Optional[str]:
+    """
+    KDTree 기반으로 edge 중점에서 가장 가까운 정상을 찾되,
+    max_distance_m 이내일 때만 summit_id를 반환한다.
+    """
+    tree, ids = summit_kdtree
+
+    R = 6371000.0
+    lat_rad = math.radians(midpoint_lat)
+    lng_rad = math.radians(midpoint_lng)
+    x = R * math.cos(lat_rad) * math.cos(lng_rad)
+    y = R * math.cos(lat_rad) * math.sin(lng_rad)
+    z = R * math.sin(lat_rad)
+
+    dist, idx = tree.query([x, y, z])
+
+    if dist <= max_distance_m:
+        return ids[idx]
+
+    return None
 
 
 def build_public_surface_map(
@@ -457,16 +516,17 @@ def build_edge_metrics(
     node_elev_index에서 고도를 참조하여 edge 메트릭을 계산한다.
     DEM 직접 접근 없음.
 
-    추가:
-    - PUBLIC trail_id 기준으로 surface를 매핑한다.
-    - 매핑 실패 또는 값 없음이면 surface는 None 유지.
+    surface 우선순위:
+    1. B단계 edge properties의 surface (직접 상속)
+    2. A단계 공공 등산로의 trail_id 기준 surface (fallback)
+    매핑 실패 또는 값 없음이면 surface는 None 유지.
 
     로직:
     1. start_node_id, end_node_id로 node 고도를 lookup
     2. elevation_diff_m = end - start (부호 있는 고도 차이)
     3. slope_percent = (elevation_diff_m / distance_m) * 100
     4. difficulty = easy / medium / hard (절댓값 기준)
-    5. trail_id 기준 surface 조회
+    5. B단계 surface 우선, 없으면 A단계 trail_id 기준 조회
     """
     properties = edge_feature.get("properties", {})
 
@@ -498,7 +558,8 @@ def build_edge_metrics(
         )
         difficulty = classify_difficulty(slope_percent)
 
-    surface = public_surface_map.get(trail_id)
+    # B단계 edge surface 우선, 없으면 A단계 공공 등산로 fallback
+    surface = properties.get("surface") or public_surface_map.get(trail_id)
 
     return {
         "edge_id": edge_id,
@@ -575,12 +636,15 @@ def build_final_trail_dataset(
 
     각 edge마다:
     1. node_elev_index에서 고도 참조 → diff/slope/difficulty 계산
-    2. PUBLIC trail_id 기준 surface 매핑
-    3. edge 중점 기준 nearest_summit_id 계산 (300m 이내)
+    2. B단계 surface 우선, A단계 fallback
+    3. KDTree 기반 nearest_summit_id 계산 (300m 이내)
     4. qa_rules로 qa_status 계산
     5. 최종 feature 생성
     """
     from qa_rules import evaluate_edge_qa
+
+    # KDTree 한 번 구축하여 재사용
+    summit_kdtree = build_summit_kdtree(summit_list)
 
     final_features: list[dict[str, Any]] = []
 
@@ -595,11 +659,11 @@ def build_final_trail_dataset(
         geometry = edge_feature.get("geometry", {})
         midpoint = get_edge_midpoint(geometry)
 
-        if midpoint is not None:
-            nearest_summit_id = find_nearest_summit_id(
+        if midpoint is not None and summit_kdtree is not None:
+            nearest_summit_id = find_nearest_summit_id_kdtree(
                 midpoint[0],
                 midpoint[1],
-                summit_list,
+                summit_kdtree,
                 SUMMIT_LINK_MAX_DISTANCE_M,
             )
 

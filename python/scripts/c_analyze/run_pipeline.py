@@ -40,7 +40,25 @@ def main() -> None:
     print(f"  duplicate_edge_ids: {sorted(duplicate_edge_ids)}")
 
     print("\n[feature 요약]")
-    for feat in final_dataset["features"]:
+    total = len(final_dataset["features"])
+    surface_count = sum(1 for f in final_dataset["features"] if f["properties"].get("surface"))
+    summit_count = sum(1 for f in final_dataset["features"] if f["properties"].get("nearest_summit_id"))
+    qa_pass = sum(1 for f in final_dataset["features"] if f["properties"].get("qa_status") == "pass")
+    qa_fail = total - qa_pass
+
+    difficulty_counts = {}
+    for f in final_dataset["features"]:
+        d = f["properties"].get("difficulty") or "unknown"
+        difficulty_counts[d] = difficulty_counts.get(d, 0) + 1
+
+    print(f"  총 feature: {total}개")
+    print(f"  surface 있음: {surface_count}개 / 없음: {total - surface_count}개")
+    print(f"  nearest_summit 연결됨: {summit_count}개")
+    print(f"  qa_status pass: {qa_pass}개 / fail: {qa_fail}개")
+    print(f"  difficulty 분포: {difficulty_counts}")
+
+    print("\n[샘플 5건]")
+    for feat in final_dataset["features"][:5]:
         props = feat["properties"]
         print(
             f"  {props['edge_id']}"
