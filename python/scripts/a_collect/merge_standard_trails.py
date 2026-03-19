@@ -27,8 +27,8 @@ REQUIRED_PROPERTIES = [
     "raw_tags",
 ]
 
-DISTANCE_TOLERANCE_M = 35.0
-COVERAGE_THRESHOLD = 0.6
+DISTANCE_TOLERANCE_M = 25.0
+COVERAGE_THRESHOLD = 0.75
 GRID_SIZE_M = 500.0
 
 SCRIPT_PATH = Path(__file__).resolve()
@@ -272,6 +272,141 @@ def compute_public_coverage_ratio(
     return coverage_ratio, nearest_distance
 
 
+def normalize_optional_value(value: Any) -> Any:
+    if value is None:
+        return None
+
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped == "":
+            return None
+        return stripped
+
+    return value
+
+
+def get_source_priority(source: str | None) -> int:
+    normalized = str(source).strip().upper() if source is not None else ""
+
+    if normalized == "PUBLIC":
+        return 2
+    if normalized == "OSM":
+        return 1
+    return 0
+
+
+def choose_preferred_value(
+        existing_value: Any,
+        incoming_value: Any,
+        existing_source: str | None,
+        incoming_source: str | None,
+) -> Any:
+    value1 = normalize_optional_value(existing_value)
+    value2 = normalize_optional_value(incoming_value)
+
+    if value1 is None and value2 is None:
+        return None
+    if value1 is None:
+        return value2
+    if value2 is None:
+        return value1
+
+    existing_priority = get_source_priority(existing_source)
+    incoming_priority = get_source_priority(incoming_source)
+
+    if incoming_priority > existing_priority:
+        return value2
+    return value1
+
+
+def merge_raw_tags(
+        existing_raw_tags: Any,
+        incoming_raw_tags: Any,
+        existing_source: str | None = None,
+        incoming_source: str | None = None,
+) -> dict[str, Any]:
+    raw_tags1 = existing_raw_tags if isinstance(existing_raw_tags, dict) else {}
+    raw_tags2 = incoming_raw_tags if isinstance(incoming_raw_tags, dict) else {}
+
+    existing_priority = get_source_priority(existing_source)
+    incoming_priority = get_source_priority(incoming_source)
+
+    if incoming_priority > existing_priority:
+        return {**raw_tags1, **raw_tags2}
+    return {**raw_tags2, **raw_tags1}
+
+
+def find_best_public_match(
+        osm_metric_geom,
+        candidate_ids: list[int],
+        public_metric_geoms: list[Any],
+        distance_tolerance_m: float,
+) -> int | None:
+    best_public_id: int | None = None
+    best_distance = float("inf")
+
+    for public_id in candidate_ids:
+        public_geom = public_metric_geoms[public_id]
+        distance = osm_metric_geom.distance(public_geom)
+
+        if distance <= distance_tolerance_m and distance < best_distance:
+            best_distance = distance
+            best_public_id = public_id
+
+    return best_public_id
+
+
+def enrich_public_with_osm(public_feature: dict[str, Any], osm_feature: dict[str, Any]) -> int:
+    public_props = public_feature["properties"]
+    osm_props = osm_feature["properties"]
+
+    original_public_surface = normalize_optional_value(public_props.get("surface"))
+    incoming_osm_surface = normalize_optional_value(osm_props.get("surface"))
+
+    public_props["surface"] = choose_preferred_value(
+        public_props.get("surface"),
+        osm_props.get("surface"),
+        public_props.get("source"),
+        osm_props.get("source"),
+    )
+    public_props["trail_type"] = choose_preferred_value(
+        public_props.get("trail_type"),
+        osm_props.get("trail_type"),
+        public_props.get("source"),
+        osm_props.get("source"),
+    )
+    public_props["source_ref"] = choose_preferred_value(
+        public_props.get("source_ref"),
+        osm_props.get("source_ref"),
+        public_props.get("source"),
+        osm_props.get("source"),
+    )
+    public_props["raw_tags"] = merge_raw_tags(
+        public_props.get("raw_tags"),
+        osm_props.get("raw_tags"),
+        public_props.get("source"),
+        osm_props.get("source"),
+    )
+
+    raw_tags = public_props.get("raw_tags")
+    if not isinstance(raw_tags, dict):
+        raw_tags = {}
+        public_props["raw_tags"] = raw_tags
+
+    raw_tags["osm_enriched"] = True
+
+    if incoming_osm_surface is not None:
+        raw_tags["osm_surface"] = incoming_osm_surface
+
+    osm_source_ref = normalize_optional_value(osm_props.get("source_ref"))
+    if osm_source_ref is not None:
+        raw_tags["osm_source_ref"] = osm_source_ref
+
+    if original_public_surface is None and incoming_osm_surface is not None:
+        return 1
+    return 0
+
+
 def build_summary(features: list[dict[str, Any]]) -> dict[str, Any]:
     source_counts: dict[str, int] = {}
     geometry_type_counts: dict[str, int] = {}
@@ -392,6 +527,7 @@ def merge_public_first(
         grid_size_m: float,
 ) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
     merged_features: list[dict[str, Any]] = []
+    public_output_index_map: dict[int, int] = {}
 
     seen_same_source_exact_keys: set[str] = set()
 
@@ -411,6 +547,8 @@ def merge_public_first(
         "osm_same_source_duplicates_removed": 0,
         "osm_skipped_by_public_priority": 0,
         "osm_kept_as_fallback": 0,
+        "osm_skipped_with_surface": 0,
+        "public_enriched_surface_count": 0,
         "merged_output_count": 0,
         "distance_tolerance_m": distance_tolerance_m,
         "coverage_threshold": coverage_threshold,
@@ -427,7 +565,7 @@ def merge_public_first(
     skipped_distances: list[float] = []
     kept_distances: list[float] = []
 
-    for feature in public_features:
+    for public_index, feature in enumerate(public_features):
         normalized = normalize_feature(feature, "PUBLIC")
         same_source_key = make_same_source_exact_key(normalized)
 
@@ -436,6 +574,7 @@ def merge_public_first(
             continue
 
         seen_same_source_exact_keys.add(same_source_key)
+        public_output_index_map[public_index] = len(merged_features)
         merged_features.append(normalized)
 
     for feature in osm_features:
@@ -475,6 +614,25 @@ def merge_public_first(
         length_m = float(normalized["properties"]["length_m"])
 
         if coverage_ratio >= coverage_threshold:
+            best_public_id = find_best_public_match(
+                osm_metric_geom=osm_metric_geom,
+                candidate_ids=candidate_ids,
+                public_metric_geoms=public_metric_geoms,
+                distance_tolerance_m=distance_tolerance_m,
+            )
+
+            if best_public_id is not None and best_public_id in public_output_index_map:
+                public_output_index = public_output_index_map[best_public_id]
+                enriched_surface_count = enrich_public_with_osm(
+                    merged_features[public_output_index],
+                    normalized,
+                )
+                stats["public_enriched_surface_count"] += enriched_surface_count
+
+            osm_surface = normalize_optional_value(normalized["properties"].get("surface"))
+            if osm_surface is not None:
+                stats["osm_skipped_with_surface"] += 1
+
             stats["osm_skipped_by_public_priority"] += 1
             skipped_lengths.append(length_m)
             skipped_coverages.append(coverage_ratio)
@@ -518,9 +676,9 @@ def main() -> None:
         raise FileNotFoundError(f"PUBLIC 입력 파일이 없습니다: {PUBLIC_INPUT_PATH}")
 
     public_data = read_json(PUBLIC_INPUT_PATH)
-    osm_data = read_json(OSM_INPUT_PATH)
-
     public_features = validate_feature_collection(public_data, "PUBLIC")
+
+    osm_data = read_json(OSM_INPUT_PATH)
     osm_features = validate_feature_collection(osm_data, "OSM")
 
     merged_features, merge_stats, quality_summary = merge_public_first(
