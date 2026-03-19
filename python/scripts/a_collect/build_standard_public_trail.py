@@ -138,7 +138,7 @@ def build_feature(raw_feature: dict[str, Any], seq: int) -> dict[str, Any] | Non
     data_standard_date = clean_text(attrs.get("DATA_STDR_"))
 
     properties = {
-        "trail_id": f"PUBLIC_TRAIL_{seq:06d}",
+        "trail_id": f"PUBLIC_T{seq:06d}",
         "name": build_name(mountain_name, section_name),
         "source": SOURCE_NAME,
         "source_ref": f"PMNTN_SN:{attrs.get('PMNTN_SN')}",
