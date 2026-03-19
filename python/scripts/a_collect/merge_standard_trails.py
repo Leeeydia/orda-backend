@@ -356,7 +356,7 @@ def find_best_public_match(
     return best_public_id
 
 
-def enrich_public_with_osm(public_feature: dict[str, Any], osm_feature: dict[str, Any]) -> int:
+def enrich_public_with_osm(public_feature: dict[str, Any], osm_feature: dict[str, Any]) -> dict[str, bool]:
     public_props = public_feature["properties"]
     osm_props = osm_feature["properties"]
 
@@ -402,9 +402,23 @@ def enrich_public_with_osm(public_feature: dict[str, Any], osm_feature: dict[str
     if osm_source_ref is not None:
         raw_tags["osm_source_ref"] = osm_source_ref
 
-    if original_public_surface is None and incoming_osm_surface is not None:
-        return 1
-    return 0
+    result = {
+        "enrich_attempted": False,
+        "surface_matchable": False,
+        "surface_enriched": False,
+        "public_already_had_surface": False,
+    }
+
+    if incoming_osm_surface is not None:
+        result["enrich_attempted"] = True
+        result["surface_matchable"] = True
+
+        if original_public_surface is None:
+            result["surface_enriched"] = True
+        else:
+            result["public_already_had_surface"] = True
+
+    return result
 
 
 def build_summary(features: list[dict[str, Any]]) -> dict[str, Any]:
@@ -548,6 +562,9 @@ def merge_public_first(
         "osm_skipped_by_public_priority": 0,
         "osm_kept_as_fallback": 0,
         "osm_skipped_with_surface": 0,
+        "osm_skipped_surface_matchable": 0,
+        "public_already_had_surface_on_skipped_match": 0,
+        "public_enrich_attempt_count": 0,
         "public_enriched_surface_count": 0,
         "merged_output_count": 0,
         "distance_tolerance_m": distance_tolerance_m,
@@ -623,11 +640,19 @@ def merge_public_first(
 
             if best_public_id is not None and best_public_id in public_output_index_map:
                 public_output_index = public_output_index_map[best_public_id]
-                enriched_surface_count = enrich_public_with_osm(
+                enrich_result = enrich_public_with_osm(
                     merged_features[public_output_index],
                     normalized,
                 )
-                stats["public_enriched_surface_count"] += enriched_surface_count
+
+                if enrich_result["enrich_attempted"]:
+                    stats["public_enrich_attempt_count"] += 1
+                if enrich_result["surface_matchable"]:
+                    stats["osm_skipped_surface_matchable"] += 1
+                if enrich_result["surface_enriched"]:
+                    stats["public_enriched_surface_count"] += 1
+                if enrich_result["public_already_had_surface"]:
+                    stats["public_already_had_surface_on_skipped_match"] += 1
 
             osm_surface = normalize_optional_value(normalized["properties"].get("surface"))
             if osm_surface is not None:
