@@ -2,6 +2,7 @@ package com.orda.backend.domain.hiking.service;
 
 import com.orda.backend.domain.hiking.dto.request.GpsTrackRequest;
 import com.orda.backend.domain.hiking.dto.request.HikingStartRequest;
+import com.orda.backend.domain.hiking.dto.response.GpsTrackResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingEndResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingSessionResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingStartResponse;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -77,5 +79,12 @@ public class HikingService {
                 .build();
 
         gpsTrackRepository.save(track);
+    }
+
+    public List<GpsTrackResponse> getTracks(Long sessionId) {
+        return gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId)
+                .stream()
+                .map(GpsTrackResponse::new)
+                .toList();
     }
 }

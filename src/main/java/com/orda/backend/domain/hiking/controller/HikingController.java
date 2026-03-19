@@ -2,6 +2,7 @@ package com.orda.backend.domain.hiking.controller;
 
 import com.orda.backend.domain.hiking.dto.request.GpsTrackRequest;
 import com.orda.backend.domain.hiking.dto.request.HikingStartRequest;
+import com.orda.backend.domain.hiking.dto.response.GpsTrackResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingEndResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingSessionResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingStartResponse;
@@ -11,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/hiking")
@@ -42,5 +45,10 @@ public class HikingController {
             @RequestBody GpsTrackRequest request) {
         hikingService.saveGpsTrack(sessionId, request);
         return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @GetMapping("/{sessionId}/tracks")
+    public ResponseEntity<List<GpsTrackResponse>> getTracks(@PathVariable Long sessionId) {
+        return ResponseEntity.ok(hikingService.getTracks(sessionId));
     }
 }
