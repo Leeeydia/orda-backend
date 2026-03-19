@@ -1,13 +1,11 @@
-CREATE
-DATABASE orda;
+CREATE DATABASE orda;
 -- ──────────────────────────────────────────────
 -- ORDA C단계 PostGIS 적재 스키마
 -- 좌표계: WGS84 / EPSG:4326
 -- geometry: 2D (고도는 속성 컬럼으로 분리)
 -- ──────────────────────────────────────────────
 -- 확장 활성화
-CREATE
-EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS postgis;
 -- ──────────────────────────────────────────────
 -- trail_nodes
 -- 원본: node_with_elevation.geojson
@@ -41,6 +39,7 @@ CREATE TABLE trail_edges
     elevation_diff_m  DOUBLE PRECISION,
     slope_percent     DOUBLE PRECISION,
     difficulty        TEXT,
+    surface           TEXT,
     nearest_summit_id TEXT,
     qa_status         TEXT,
     geom              GEOMETRY(LineString, 4326)
@@ -89,12 +88,9 @@ CREATE TABLE users
     updated_at        TIMESTAMP    NOT NULL DEFAULT now()
 );
 
-COMMENT
-ON TABLE  users IS '사용자 계정 (기능정의서 No.1 회원가입, No.2 로그인/로그아웃)';
-COMMENT
-ON COLUMN users.email IS '로그인 식별자, 이메일 기반 회원가입';
-COMMENT
-ON COLUMN users.password_hash IS 'BCrypt 해시 처리된 비밀번호';
+COMMENT ON TABLE  users IS '사용자 계정 (기능정의서 No.1 회원가입, No.2 로그인/로그아웃)';
+COMMENT ON COLUMN users.email IS '로그인 식별자, 이메일 기반 회원가입';
+COMMENT ON COLUMN users.password_hash IS 'BCrypt 해시 처리된 비밀번호';
 
 CREATE INDEX idx_users_email ON users (email);
 
@@ -122,16 +118,11 @@ CREATE TABLE hiking_sessions
     created_at             TIMESTAMP   NOT NULL DEFAULT now()
 );
 
-COMMENT
-ON TABLE  hiking_sessions IS '등산 세션 (기능정의서 No.3 등산 시작/종료, No.4 경로 저장)';
-COMMENT
-ON COLUMN hiking_sessions.status IS 'ACTIVE: 진행중, PAUSED: 일시정지, COMPLETED: 완료, ABANDONED: 포기';
-COMMENT
-ON COLUMN hiking_sessions.total_distance_m IS '총 이동 거리 (미터)';
-COMMENT
-ON COLUMN hiking_sessions.total_elevation_gain_m IS '총 누적 상승 고도 (미터)';
-COMMENT
-ON COLUMN hiking_sessions.total_elevation_loss_m IS '총 누적 하강 고도 (미터)';
+COMMENT ON TABLE  hiking_sessions IS '등산 세션 (기능정의서 No.3 등산 시작/종료, No.4 경로 저장)';
+COMMENT ON COLUMN hiking_sessions.status IS 'ACTIVE: 진행중, PAUSED: 일시정지, COMPLETED: 완료, ABANDONED: 포기';
+COMMENT ON COLUMN hiking_sessions.total_distance_m IS '총 이동 거리 (미터)';
+COMMENT ON COLUMN hiking_sessions.total_elevation_gain_m IS '총 누적 상승 고도 (미터)';
+COMMENT ON COLUMN hiking_sessions.total_elevation_loss_m IS '총 누적 하강 고도 (미터)';
 
 CREATE INDEX idx_hiking_sessions_user_id ON hiking_sessions (user_id);
 CREATE INDEX idx_hiking_sessions_status ON hiking_sessions (status);
@@ -158,16 +149,11 @@ CREATE TABLE gps_tracks
     UNIQUE (session_id, sequence_num)
 );
 
-COMMENT
-ON TABLE  gps_tracks IS 'GPS 트랙 포인트 (기능정의서 No.4 실시간 GPS 수집)';
-COMMENT
-ON COLUMN gps_tracks.sequence_num IS '세션 내 포인트 순서 (1부터 시작)';
-COMMENT
-ON COLUMN gps_tracks.geom IS 'WGS84 좌표 (EPSG:4326), [lng, lat] 순서';
-COMMENT
-ON COLUMN gps_tracks.elevation_m IS '고도 (미터) - 기기 GPS 값, DEM 보정은 별도 처리';
-COMMENT
-ON COLUMN gps_tracks.accuracy_m IS 'GPS 정확도 (미터) - 수평 오차 반경';
+COMMENT ON TABLE  gps_tracks IS 'GPS 트랙 포인트 (기능정의서 No.4 실시간 GPS 수집)';
+COMMENT ON COLUMN gps_tracks.sequence_num IS '세션 내 포인트 순서 (1부터 시작)';
+COMMENT ON COLUMN gps_tracks.geom IS 'WGS84 좌표 (EPSG:4326), [lng, lat] 순서';
+COMMENT ON COLUMN gps_tracks.elevation_m IS '고도 (미터) - 기기 GPS 값, DEM 보정은 별도 처리';
+COMMENT ON COLUMN gps_tracks.accuracy_m IS 'GPS 정확도 (미터) - 수평 오차 반경';
 
 CREATE INDEX idx_gps_tracks_session_id ON gps_tracks (session_id, sequence_num);
 CREATE INDEX idx_gps_tracks_geom ON gps_tracks USING GIST (geom);
@@ -194,14 +180,10 @@ CREATE TABLE summit_verifications
     UNIQUE (session_id, summit_id)
 );
 
-COMMENT
-ON TABLE  summit_verifications IS '정상 인증 기록 (기능정의서 No.5 정상 도달 판별)';
-COMMENT
-ON COLUMN summit_verifications.distance_to_summit_m IS '인증 시점 사용자↔정상 간 거리 (미터)';
-COMMENT
-ON COLUMN summit_verifications.verification_method IS 'gps: GPS 좌표 비교 (MVP), photo_exif/sign_recognition: 도전과제';
-COMMENT
-ON COLUMN summit_verifications.geom IS '인증 시점의 사용자 GPS 좌표';
+COMMENT ON TABLE  summit_verifications IS '정상 인증 기록 (기능정의서 No.5 정상 도달 판별)';
+COMMENT ON COLUMN summit_verifications.distance_to_summit_m IS '인증 시점 사용자↔정상 간 거리 (미터)';
+COMMENT ON COLUMN summit_verifications.verification_method IS 'gps: GPS 좌표 비교 (MVP), photo_exif/sign_recognition: 도전과제';
+COMMENT ON COLUMN summit_verifications.geom IS '인증 시점의 사용자 GPS 좌표';
 
 CREATE INDEX idx_summit_verifications_session ON summit_verifications (session_id);
 CREATE INDEX idx_summit_verifications_summit ON summit_verifications (summit_id);
@@ -226,12 +208,9 @@ CREATE TABLE user_stats
     updated_at             TIMESTAMP        NOT NULL DEFAULT now()
 );
 
-COMMENT
-ON TABLE  user_stats IS '사용자 통계 캐시 (기능정의서 No.13 내 기록 조회, No.14 프로필/통계 조회)';
-COMMENT
-ON COLUMN user_stats.total_hikes IS '완료된 등산 횟수';
-COMMENT
-ON COLUMN user_stats.total_summits IS '정상 인증 성공 횟수';
+COMMENT ON TABLE  user_stats IS '사용자 통계 캐시 (기능정의서 No.13 내 기록 조회, No.14 프로필/통계 조회)';
+COMMENT ON COLUMN user_stats.total_hikes IS '완료된 등산 횟수';
+COMMENT ON COLUMN user_stats.total_summits IS '정상 인증 성공 횟수';
 
 CREATE INDEX idx_user_stats_user_id ON user_stats (user_id);
 

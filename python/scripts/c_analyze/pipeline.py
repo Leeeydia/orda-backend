@@ -6,12 +6,15 @@ from pathlib import Path
 from typing import Any, Optional
 
 import rasterio
+import numpy as np
+from scipy.spatial import cKDTree
 
 from config import (
     INPUT_EDGES_PATH,
     INPUT_NODES_PATH,
     INPUT_DEM_PATH,
     INPUT_SUMMIT_PATH,
+    INPUT_PUBLIC_TRAILS_PATH,
     NODE_ELEVATION_PATH,
     SUMMIT_LINK_MAX_DISTANCE_M,
 )
@@ -64,7 +67,9 @@ def open_dem(dem_path: Path):
 
 
 def sample_elevation(
-        dem_dataset, lng: float, lat: float,
+        dem_dataset,
+        lng: float,
+        lat: float,
 ) -> tuple[Optional[float], str]:
     """
     DEM에서 [lng, lat] 좌표의 고도값을 추출한다.
@@ -73,20 +78,16 @@ def sample_elevation(
     - status: "ok" | "nodata" | "out_of_bounds" | "error:{에러타입}"
     """
     try:
-        # 좌표가 DEM bounds 안에 있는지 먼저 확인
         bounds = dem_dataset.bounds
-        if not (bounds.left <= lng <= bounds.right
-                and bounds.bottom <= lat <= bounds.top):
+        if not (bounds.left <= lng <= bounds.right and bounds.bottom <= lat <= bounds.top):
             return None, "out_of_bounds"
 
-        # rasterio.sample()은 [(x, y)] 형식 = [(lng, lat)] 형식
         values = list(dem_dataset.sample([(lng, lat)]))
         if len(values) == 0:
             return None, "no_sample"
 
         elevation = float(values[0][0])
 
-        # nodata 값 체크
         if dem_dataset.nodata is not None and elevation == dem_dataset.nodata:
             return None, "nodata"
 
@@ -107,10 +108,6 @@ def build_node_elevation(
     """
     모든 node에 대해 DEM 고도를 샘플링하여
     node_with_elevation FeatureCollection + lookup index를 생성한다.
-
-    - DEM 샘플링 책임이 이 함수에 고정됨
-    - edge 계산은 이 결과를 참조만 함
-    - trail_nodes 테이블 적재 데이터와 직접 매핑됨
 
     반환: {
         "geojson": FeatureCollection (저장용),
@@ -157,7 +154,6 @@ def build_node_elevation(
         "features": features,
     }
 
-    # 요약
     total = len(features)
     ok = sum(1 for v in elev_index.values() if v["status"] == "ok")
     fail = total - ok
@@ -222,6 +218,86 @@ def build_summit_list(
     return summits
 
 
+def build_summit_kdtree(
+        summit_list: list[dict[str, Any]],
+) -> Optional[tuple[cKDTree, list[str]]]:
+    """
+    summit 좌표로 KDTree를 구축한다.
+    반환: (kdtree, summit_id_list) 또는 summit이 없으면 None
+
+    좌표를 라디안 변환 후 3D 직교좌표(x, y, z)로 변환하여
+    유클리드 거리 기반 KDTree에서 정확한 최근접 검색이 가능하게 한다.
+    """
+    if not summit_list:
+        return None
+
+    R = 6371000.0
+    coords = []
+    ids = []
+
+    for summit in summit_list:
+        lat_rad = math.radians(summit["lat"])
+        lng_rad = math.radians(summit["lng"])
+        x = R * math.cos(lat_rad) * math.cos(lng_rad)
+        y = R * math.cos(lat_rad) * math.sin(lng_rad)
+        z = R * math.sin(lat_rad)
+        coords.append([x, y, z])
+        ids.append(summit["summit_id"])
+
+    tree = cKDTree(np.array(coords))
+    return tree, ids
+
+
+def find_nearest_summit_id_kdtree(
+        midpoint_lng: float,
+        midpoint_lat: float,
+        summit_kdtree: tuple[cKDTree, list[str]],
+        max_distance_m: float,
+) -> Optional[str]:
+    """
+    KDTree 기반으로 edge 중점에서 가장 가까운 정상을 찾되,
+    max_distance_m 이내일 때만 summit_id를 반환한다.
+    """
+    tree, ids = summit_kdtree
+
+    R = 6371000.0
+    lat_rad = math.radians(midpoint_lat)
+    lng_rad = math.radians(midpoint_lng)
+    x = R * math.cos(lat_rad) * math.cos(lng_rad)
+    y = R * math.cos(lat_rad) * math.sin(lng_rad)
+    z = R * math.sin(lat_rad)
+
+    dist, idx = tree.query([x, y, z])
+
+    if dist <= max_distance_m:
+        return ids[idx]
+
+    return None
+
+
+def build_public_surface_map(
+        public_trail_features: list[dict[str, Any]],
+) -> dict[str, Optional[str]]:
+    """
+    standard_public_trail.geojson 에서
+    trail_id -> surface 매핑 딕셔너리를 생성한다.
+
+    surface가 없거나 null이면 그대로 None 유지.
+    """
+    surface_map: dict[str, Optional[str]] = {}
+
+    for feature in public_trail_features:
+        properties = feature.get("properties", {})
+        trail_id = properties.get("trail_id")
+
+        if not trail_id:
+            continue
+
+        surface_map[trail_id] = properties.get("surface")
+
+    return surface_map
+
+
 def collect_edge_ids(
         edge_features: list[dict[str, Any]],
 ) -> tuple[list[str], set[str]]:
@@ -251,8 +327,10 @@ def collect_edge_ids(
 # ──────────────────────────────────────────────
 
 def haversine_distance_m(
-        lng1: float, lat1: float,
-        lng2: float, lat2: float,
+        lng1: float,
+        lat1: float,
+        lng2: float,
+        lat2: float,
 ) -> float:
     """
     두 좌표 사이의 거리를 미터 단위로 계산한다 (Haversine 공식).
@@ -295,7 +373,6 @@ def get_edge_midpoint(geometry: dict[str, Any]) -> Optional[tuple[float, float]]
             (coords[0][1] + coords[1][1]) / 2,
         )
 
-    # 각 segment 길이 누적
     segment_lengths: list[float] = []
     for i in range(len(coords) - 1):
         d = haversine_distance_m(
@@ -307,7 +384,6 @@ def get_edge_midpoint(geometry: dict[str, Any]) -> Optional[tuple[float, float]]
     total_length = sum(segment_lengths)
     half_length = total_length / 2
 
-    # 누적 길이가 half_length를 넘는 segment에서 보간
     cumulative = 0.0
     for i, seg_len in enumerate(segment_lengths):
         if cumulative + seg_len >= half_length:
@@ -318,7 +394,6 @@ def get_edge_midpoint(geometry: dict[str, Any]) -> Optional[tuple[float, float]]
             return (lng, lat)
         cumulative += seg_len
 
-    # fallback (정상적으로는 여기 오지 않음)
     return (coords[-1][0], coords[-1][1])
 
 
@@ -391,6 +466,7 @@ def load_c_stage_inputs() -> dict[str, Any]:
     - B단계 산출물: edges, nodes
     - DEM: rasterio dataset → node 고도 샘플링 후 닫기
     - 정상 데이터: summit features
+    - A단계 공공 등산로: surface 매핑용
 
     흐름:
     1. 파일 로딩
@@ -401,17 +477,17 @@ def load_c_stage_inputs() -> dict[str, Any]:
     edge_features = read_geojson_features(INPUT_EDGES_PATH)
     node_features = read_geojson_features(INPUT_NODES_PATH)
     summit_features = read_geojson_features(INPUT_SUMMIT_PATH)
+    public_trail_features = read_geojson_features(INPUT_PUBLIC_TRAILS_PATH)
 
-    # DEM 열기 → node 고도 샘플링 → 닫기
     dem_dataset = open_dem(INPUT_DEM_PATH)
     node_elev_result = build_node_elevation(node_features, dem_dataset)
     dem_dataset.close()
 
-    # node_with_elevation.geojson 저장
     save_geojson(NODE_ELEVATION_PATH, node_elev_result["geojson"])
 
     node_index = build_node_index(node_features)
     summit_list = build_summit_list(summit_features)
+    public_surface_map = build_public_surface_map(public_trail_features)
     edge_ids, duplicate_edge_ids = collect_edge_ids(edge_features)
     node_ids = set(node_index.keys())
 
@@ -420,6 +496,7 @@ def load_c_stage_inputs() -> dict[str, Any]:
         "node_features": node_features,
         "node_elev_index": node_elev_result["index"],
         "summit_list": summit_list,
+        "public_surface_map": public_surface_map,
         "edge_ids": edge_ids,
         "duplicate_edge_ids": duplicate_edge_ids,
         "node_ids": node_ids,
@@ -433,33 +510,38 @@ def load_c_stage_inputs() -> dict[str, Any]:
 def build_edge_metrics(
         edge_feature: dict[str, Any],
         node_elev_index: dict[str, dict[str, Any]],
+        public_surface_map: dict[str, Optional[str]],
 ) -> dict[str, Any]:
     """
     node_elev_index에서 고도를 참조하여 edge 메트릭을 계산한다.
     DEM 직접 접근 없음.
 
+    surface 우선순위:
+    1. B단계 edge properties의 surface (직접 상속)
+    2. A단계 공공 등산로의 trail_id 기준 surface (fallback)
+    매핑 실패 또는 값 없음이면 surface는 None 유지.
+
     로직:
     1. start_node_id, end_node_id로 node 고도를 lookup
     2. elevation_diff_m = end - start (부호 있는 고도 차이)
-       ※ 현재는 end-start 단순 차이값이며, 진짜 누적 상승고도가 아님
     3. slope_percent = (elevation_diff_m / distance_m) * 100
     4. difficulty = easy / medium / hard (절댓값 기준)
+    5. B단계 surface 우선, 없으면 A단계 trail_id 기준 조회
     """
     properties = edge_feature.get("properties", {})
 
     edge_id = properties.get("edge_id")
+    trail_id = properties.get("trail_id")
     start_node_id = properties.get("start_node_id")
     end_node_id = properties.get("end_node_id")
     distance_m = properties.get("distance_m")
 
-    # node 고도 참조
     start_elev = node_elev_index.get(start_node_id, {})
     end_elev = node_elev_index.get(end_node_id, {})
 
     elevation_start_m = start_elev.get("elevation_m")
     elevation_end_m = end_elev.get("elevation_m")
 
-    # 계산
     elevation_diff_m: Optional[float] = None
     slope_percent: Optional[float] = None
     difficulty: Optional[str] = None
@@ -476,8 +558,12 @@ def build_edge_metrics(
         )
         difficulty = classify_difficulty(slope_percent)
 
+    # B단계 edge surface 우선, 없으면 A단계 공공 등산로 fallback
+    surface = properties.get("surface") or public_surface_map.get(trail_id)
+
     return {
         "edge_id": edge_id,
+        "trail_id": trail_id,
         "start_node_id": start_node_id,
         "end_node_id": end_node_id,
         "distance_m": distance_m,
@@ -486,6 +572,7 @@ def build_edge_metrics(
         "elevation_diff_m": elevation_diff_m,
         "slope_percent": slope_percent,
         "difficulty": difficulty,
+        "surface": surface,
     }
 
 
@@ -502,10 +589,10 @@ def build_final_trail_feature(
     """
     문서 기준 final_trail_dataset.geojson의 feature 하나를 생성한다.
 
-    필드 순서 (공식문서 기준, elevation_gain_m → elevation_diff_m 변경):
+    필드 순서:
     edge_id, start_node_id, end_node_id, distance_m,
     elevation_start_m, elevation_end_m, elevation_diff_m,
-    slope_percent, difficulty, nearest_summit_id, qa_status,
+    slope_percent, difficulty, surface, nearest_summit_id, qa_status,
     geometry
     """
     geometry = edge_feature.get("geometry")
@@ -520,6 +607,7 @@ def build_final_trail_feature(
         "elevation_diff_m": edge_metrics["elevation_diff_m"],
         "slope_percent": edge_metrics["slope_percent"],
         "difficulty": edge_metrics["difficulty"],
+        "surface": edge_metrics["surface"],
         "nearest_summit_id": nearest_summit_id,
         "qa_status": qa_result["qa_status"],
     }
@@ -539,6 +627,7 @@ def build_final_trail_dataset(
         edge_features: list[dict[str, Any]],
         node_elev_index: dict[str, dict[str, Any]],
         summit_list: list[dict[str, Any]],
+        public_surface_map: dict[str, Optional[str]],
         node_ids: set[str],
         duplicate_edge_ids: set[str],
 ) -> dict[str, Any]:
@@ -547,33 +636,37 @@ def build_final_trail_dataset(
 
     각 edge마다:
     1. node_elev_index에서 고도 참조 → diff/slope/difficulty 계산
-    2. edge 중점 기준 nearest_summit_id 계산 (300m 이내)
-    3. qa_rules로 qa_status 계산
-    4. 최종 feature 생성
+    2. B단계 surface 우선, A단계 fallback
+    3. KDTree 기반 nearest_summit_id 계산 (300m 이내)
+    4. qa_rules로 qa_status 계산
+    5. 최종 feature 생성
     """
     from qa_rules import evaluate_edge_qa
+
+    # KDTree 한 번 구축하여 재사용
+    summit_kdtree = build_summit_kdtree(summit_list)
 
     final_features: list[dict[str, Any]] = []
 
     for edge_feature in edge_features:
-        # 1. elevation / slope / difficulty
         edge_metrics = build_edge_metrics(
-            edge_feature, node_elev_index
+            edge_feature,
+            node_elev_index,
+            public_surface_map,
         )
 
-        # 2. nearest_summit_id
         nearest_summit_id: Optional[str] = None
         geometry = edge_feature.get("geometry", {})
         midpoint = get_edge_midpoint(geometry)
 
-        if midpoint is not None:
-            nearest_summit_id = find_nearest_summit_id(
-                midpoint[0], midpoint[1],
-                summit_list,
+        if midpoint is not None and summit_kdtree is not None:
+            nearest_summit_id = find_nearest_summit_id_kdtree(
+                midpoint[0],
+                midpoint[1],
+                summit_kdtree,
                 SUMMIT_LINK_MAX_DISTANCE_M,
             )
 
-        # 3. qa_status
         qa_result = evaluate_edge_qa(
             edge_feature=edge_feature,
             node_ids=node_ids,
@@ -581,10 +674,11 @@ def build_final_trail_dataset(
             duplicate_edge_ids=duplicate_edge_ids,
         )
 
-        # 4. 최종 feature 생성
         final_feature = build_final_trail_feature(
-            edge_feature, edge_metrics,
-            nearest_summit_id, qa_result,
+            edge_feature,
+            edge_metrics,
+            nearest_summit_id,
+            qa_result,
         )
         final_features.append(final_feature)
 
