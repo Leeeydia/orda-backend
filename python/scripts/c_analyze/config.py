@@ -1,5 +1,6 @@
 import os
 import pyproj
+
 os.environ["PROJ_LIB"] = pyproj.datadir.get_data_dir()
 
 from pathlib import Path
@@ -13,7 +14,8 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 # ──────────────────────────────────────────────
 # 입력 경로
 # ──────────────────────────────────────────────
-# B단계 산출물 (현재는 mock 경로 사용)
+
+# B단계 산출물
 INPUT_B_DIR = BASE_DIR / "data" / "interim" / "b_output"
 INPUT_EDGES_PATH = INPUT_B_DIR / "trail_network_edges.geojson"
 INPUT_NODES_PATH = INPUT_B_DIR / "trail_network_nodes.geojson"
@@ -21,9 +23,14 @@ INPUT_NODES_PATH = INPUT_B_DIR / "trail_network_nodes.geojson"
 # DEM 원본 경로
 INPUT_DEM_PATH = BASE_DIR / "data" / "raw" / "dem" / "nasadem" / "korea_dem.tif"
 
-# 정상 데이터 경로 (A단계 산출물 - 지금은 mock 사용)
+# A단계 산출물
 INPUT_A_DIR = BASE_DIR / "data" / "interim" / "a_output"
+
+# 정상 데이터
 INPUT_SUMMIT_PATH = INPUT_A_DIR / "standard_summit.geojson"
+
+# ⭐ 추가: 공공 등산로 (surface 포함)
+INPUT_PUBLIC_TRAILS_PATH = INPUT_A_DIR / "standard_public_trail.geojson"
 
 # ──────────────────────────────────────────────
 # 출력 경로 (data/ 폴더 안에 있음)
@@ -37,7 +44,7 @@ FINAL_TRAIL_DATASET_PATH = INTERIM_C_OUTPUT_DIR / "final_trail_dataset.geojson"
 SUMMIT_POINTS_PATH = INTERIM_C_OUTPUT_DIR / "summit_points.geojson"
 QUALITY_REPORT_PATH = INTERIM_C_OUTPUT_DIR / "quality_report.md"
 
-# 문서 기준 최종 산출물 경로 (팀 합의 후 여기로 복사)
+# 문서 기준 최종 산출물 경로
 FINAL_DIR = DATA_DIR / "final"
 FINAL_TRAIL_DATASET_FINAL_PATH = FINAL_DIR / "final_trail_dataset.geojson"
 SUMMIT_POINTS_FINAL_PATH = FINAL_DIR / "summit_points.geojson"
@@ -60,7 +67,6 @@ MEDIUM_MAX_EXCLUSIVE = 12
 # ──────────────────────────────────────────────
 # PostgreSQL 접속 설정
 # ──────────────────────────────────────────────
-import os
 
 DB_HOST = os.environ.get("ORDA_DB_HOST", "localhost")
 DB_PORT = os.environ.get("ORDA_DB_PORT", "5432")
