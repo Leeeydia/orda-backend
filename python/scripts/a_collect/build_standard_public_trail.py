@@ -16,9 +16,9 @@ OUTPUT_PATH = BASE_DIR / "data" / "interim" / "a_output" / "standard_public_trai
 SOURCE_NAME = "PUBLIC"
 TRAIL_TYPE = "trail"
 
-# 공공데이터 좌표계: PCS_ITRF2000_TM (EPSG:5179)
-# 목표 좌표계: WGS84 (EPSG:4326)
-TRANSFORMER = Transformer.from_crs("EPSG:5179", "EPSG:4326", always_xy=True)
+# 공공데이터 좌표계: GRS80 TM 중부원점
+# EPSG:5186 → EPSG:4326 변환
+TRANSFORMER = Transformer.from_crs("EPSG:5186", "EPSG:4326", always_xy=True)
 
 
 def read_json(path: Path) -> dict[str, Any]:
