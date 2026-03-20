@@ -36,6 +36,9 @@ public class TrailEdge {
     @Column(name = "slope_percent")
     private Double slopePercent;
 
+    @Column(name = "difficulty_score")
+    private Double difficultyScore;
+
     @Column(name = "difficulty")
     private String difficulty;
 

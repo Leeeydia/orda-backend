@@ -32,18 +32,14 @@ public class TrailDifficultyResponse {
         this.nearestSummitId = nearestSummitId;
     }
 
-    public static TrailDifficultyResponse of(
-            TrailEdge edge,
-            double score,
-            String grade
-    ) {
+    public static TrailDifficultyResponse from(TrailEdge edge) {
         return new TrailDifficultyResponse(
                 edge.getEdgeId(),
                 edge.getDistanceM(),
                 edge.getSlopePercent(),
                 edge.getElevationDiffM(),
-                score,
-                grade,
+                edge.getDifficultyScore(),
+                edge.getDifficulty(),
                 edge.getNearestSummitId()
         );
     }
