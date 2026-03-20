@@ -624,8 +624,9 @@ def build_edge_metrics(
     1. start_node_id, end_node_id로 node 고도를 lookup
     2. elevation_diff_m = end - start (부호 있는 고도 차이)
     3. slope_percent = (elevation_diff_m / distance_m) * 100
-    4. difficulty = easy / medium / hard (절댓값 기준)
-    5. B단계 surface 우선, 없으면 A단계 trail_id 기준 조회
+    4. difficulty_score = 4변수 가중합 (slope/elevation/distance/terrain)
+    5. difficulty = easy/moderate/hard/very_hard/extreme
+    6. B단계 surface 우선, 없으면 A단계 trail_id 기준 조회
     """
     properties = edge_feature.get("properties", {})
 
@@ -699,7 +700,7 @@ def build_final_trail_feature(
     필드 순서:
     edge_id, start_node_id, end_node_id, distance_m,
     elevation_start_m, elevation_end_m, elevation_diff_m,
-    slope_percent, difficulty, surface, nearest_summit_id, qa_status,
+    slope_percent, difficulty_score, difficulty, surface, nearest_summit_id, qa_status,
     geometry
     """
     geometry = edge_feature.get("geometry")
@@ -743,7 +744,7 @@ def build_final_trail_dataset(
     모든 edge를 순회하며 final_trail_dataset.geojson을 생성한다.
 
     각 edge마다:
-    1. node_elev_index에서 고도 참조 → diff/slope/difficulty 계산
+    1. node_elev_index에서 고도 참조 → diff/slope/difficulty_score/difficulty 계산
     2. B단계 surface 우선, A단계 fallback
     3. KDTree 기반 nearest_summit_id 계산 (300m 이내)
     4. qa_rules로 qa_status 계산
