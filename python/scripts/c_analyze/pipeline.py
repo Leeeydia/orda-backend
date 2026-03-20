@@ -492,6 +492,9 @@ def calculate_difficulty_score(
         elevation_diff_m: Optional[float],
         distance_m: Optional[float],
         surface: Optional[str],
+        max_slope: float = 50.0,
+        max_elevation: float = 500.0,
+        max_distance: float = 10000.0,
 ) -> Optional[float]:
     """
     4변수 난이도 점수를 계산한다.
@@ -501,13 +504,14 @@ def calculate_difficulty_score(
     - terrain   가중치 0.20
 
     slope, elevation_diff_m, distance_m 중 하나라도 None이면 None 반환.
+    max_slope, max_elevation, max_distance는 실데이터 기반 최댓값.
     """
     if slope_percent is None or elevation_diff_m is None or distance_m is None:
         return None
 
-    slope_score = normalize(abs(slope_percent), 0.0, 50.0)
-    elevation_score = normalize(abs(elevation_diff_m), 0.0, 500.0)
-    distance_score = normalize(distance_m, 0.0, 10000.0)
+    slope_score = normalize(abs(slope_percent), 0.0, max_slope)
+    elevation_score = normalize(abs(elevation_diff_m), 0.0, max_elevation)
+    distance_score = normalize(distance_m, 0.0, max_distance)
     terrain_score = get_terrain_score(surface)
 
     score = (
@@ -522,11 +526,6 @@ def calculate_difficulty_score(
 def classify_difficulty(difficulty_score: Optional[float]) -> Optional[str]:
     """
     difficulty_score(0~100) 기준으로 등급을 분류한다.
-    - easy      : 20 미만
-    - moderate  : 20 이상 40 미만
-    - hard      : 40 이상 60 미만
-    - very_hard : 60 이상 80 미만
-    - extreme   : 80 이상
     None이면 None 반환.
     """
     if difficulty_score is None:
@@ -608,6 +607,9 @@ def build_edge_metrics(
         edge_feature: dict[str, Any],
         node_elev_index: dict[str, dict[str, Any]],
         public_surface_map: dict[str, Optional[str]],
+        max_slope: float = 50.0,
+        max_elevation: float = 500.0,
+        max_distance: float = 10000.0,
 ) -> dict[str, Any]:
     """
     node_elev_index에서 고도를 참조하여 edge 메트릭을 계산한다.
@@ -622,9 +624,8 @@ def build_edge_metrics(
     1. start_node_id, end_node_id로 node 고도를 lookup
     2. elevation_diff_m = end - start (부호 있는 고도 차이)
     3. slope_percent = (elevation_diff_m / distance_m) * 100
-    4. difficulty_score = 4변수 가중합 (slope/elevation/distance/terrain)
-    5. difficulty = easy/moderate/hard/very_hard/extreme
-    6. B단계 surface 우선, 없으면 A단계 trail_id 기준 조회
+    4. difficulty = easy / medium / hard (절댓값 기준)
+    5. B단계 surface 우선, 없으면 A단계 trail_id 기준 조회
     """
     properties = edge_feature.get("properties", {})
 
@@ -642,6 +643,7 @@ def build_edge_metrics(
 
     elevation_diff_m: Optional[float] = None
     slope_percent: Optional[float] = None
+    difficulty: Optional[str] = None
 
     if (
             elevation_start_m is not None
@@ -658,7 +660,10 @@ def build_edge_metrics(
     surface = properties.get("surface") or public_surface_map.get(trail_id)
 
     difficulty_score = calculate_difficulty_score(
-        slope_percent, elevation_diff_m, distance_m, surface
+        slope_percent, elevation_diff_m, distance_m, surface,
+        max_slope=max_slope,
+        max_elevation=max_elevation,
+        max_distance=max_distance,
     )
     difficulty = classify_difficulty(difficulty_score)
 
@@ -694,8 +699,8 @@ def build_final_trail_feature(
     필드 순서:
     edge_id, start_node_id, end_node_id, distance_m,
     elevation_start_m, elevation_end_m, elevation_diff_m,
-    slope_percent, difficulty_score, difficulty, surface,
-    nearest_summit_id, qa_status, geometry
+    slope_percent, difficulty, surface, nearest_summit_id, qa_status,
+    geometry
     """
     geometry = edge_feature.get("geometry")
 
@@ -738,13 +743,42 @@ def build_final_trail_dataset(
     모든 edge를 순회하며 final_trail_dataset.geojson을 생성한다.
 
     각 edge마다:
-    1. node_elev_index에서 고도 참조 → diff/slope/difficulty_score/difficulty 계산
+    1. node_elev_index에서 고도 참조 → diff/slope/difficulty 계산
     2. B단계 surface 우선, A단계 fallback
     3. KDTree 기반 nearest_summit_id 계산 (300m 이내)
     4. qa_rules로 qa_status 계산
     5. 최종 feature 생성
     """
     from qa_rules import evaluate_edge_qa
+
+    # 실데이터 기반 최댓값 계산
+    slope_values = []
+    elevation_values = []
+    distance_values = []
+
+    for edge_feature in edge_features:
+        props = edge_feature.get("properties", {})
+        start_node = node_elev_index.get(props.get("start_node_id"), {})
+        end_node = node_elev_index.get(props.get("end_node_id"), {})
+        distance_m = props.get("distance_m")
+
+        elev_start = start_node.get("elevation_m")
+        elev_end = end_node.get("elevation_m")
+
+        if elev_start is not None and elev_end is not None and distance_m and distance_m > 0:
+            elev_diff = abs(elev_end - elev_start)
+            slope = abs((elev_diff / distance_m) * 100)
+            slope_values.append(slope)
+            elevation_values.append(elev_diff)
+
+        if distance_m:
+            distance_values.append(distance_m)
+
+    max_slope = float(np.percentile(slope_values, 99)) if slope_values else 50.0
+    max_elevation = float(np.percentile(elevation_values, 99)) if elevation_values else 500.0
+    max_distance = float(np.percentile(distance_values, 99)) if distance_values else 10000.0
+
+    print(f"  [난이도 기준값] slope: {max_slope:.1f}% / elevation: {max_elevation:.1f}m / distance: {max_distance:.1f}m")
 
     # KDTree 한 번 구축하여 재사용
     summit_kdtree = build_summit_kdtree(summit_list)
@@ -756,6 +790,9 @@ def build_final_trail_dataset(
             edge_feature,
             node_elev_index,
             public_surface_map,
+            max_slope=max_slope,
+            max_elevation=max_elevation,
+            max_distance=max_distance,
         )
 
         nearest_summit_id: Optional[str] = None
