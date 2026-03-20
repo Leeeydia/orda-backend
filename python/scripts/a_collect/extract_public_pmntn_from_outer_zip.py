@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import zipfile
@@ -50,6 +51,24 @@ def build_unique_output_path(output_dir: Path, filename: str) -> Path:
         index += 1
 
 
+def compute_bytes_sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def find_existing_same_content_file(output_dir: Path, filename: str, raw_bytes: bytes) -> Path | None:
+    target_hash = compute_bytes_sha256(raw_bytes)
+    suffix = Path(filename).suffix
+
+    for candidate in output_dir.glob(f"*{suffix}"):
+        if not candidate.is_file():
+            continue
+
+        if compute_bytes_sha256(candidate.read_bytes()) == target_hash:
+            return candidate
+
+    return None
+
+
 def extract_target_files() -> List[Dict[str, str]]:
     if not OUTER_ZIP_PATH.exists():
         raise FileNotFoundError(f"파일을 찾을 수 없습니다: {OUTER_ZIP_PATH}")
@@ -80,11 +99,26 @@ def extract_target_files() -> List[Dict[str, str]]:
                         continue
 
                     raw_bytes = inner_zip.read(inner_name)
-                    output_path = build_unique_output_path(
+                    filename = Path(inner_name).name
+
+                    existing_same_file = find_existing_same_content_file(
                         OUTPUT_DIR,
-                        Path(inner_name).name,
+                        filename,
+                        raw_bytes,
                     )
 
+                    if existing_same_file is not None:
+                        manifest.append(
+                            {
+                                "outer_zip_member": outer_name,
+                                "inner_file": inner_name,
+                                "output_path": existing_same_file.as_posix(),
+                                "status": "skipped_same_content",
+                            }
+                        )
+                        continue
+
+                    output_path = build_unique_output_path(OUTPUT_DIR, filename)
                     output_path.write_bytes(raw_bytes)
 
                     manifest.append(
@@ -92,6 +126,7 @@ def extract_target_files() -> List[Dict[str, str]]:
                             "outer_zip_member": outer_name,
                             "inner_file": inner_name,
                             "output_path": output_path.as_posix(),
+                            "status": "extracted",
                         }
                     )
 
@@ -120,9 +155,14 @@ def main() -> None:
     manifest = extract_target_files()
     save_manifest(manifest)
 
+    extracted_count = sum(1 for item in manifest if item.get("status") == "extracted")
+    skipped_same_content_count = sum(1 for item in manifest if item.get("status") == "skipped_same_content")
+
     print("----- 추출 완료 -----")
     print(f"입력 zip: {OUTER_ZIP_PATH}")
-    print(f"추출 개수: {len(manifest)}")
+    print(f"매니페스트 전체 건수: {len(manifest)}")
+    print(f"새로 저장한 파일 수: {extracted_count}")
+    print(f"기존 동일 내용 스킵 수: {skipped_same_content_count}")
     print(f"출력 폴더: {OUTPUT_DIR}")
     print(f"매니페스트: {MANIFEST_PATH}")
 
