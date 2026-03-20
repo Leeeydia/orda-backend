@@ -39,6 +39,7 @@ CREATE TABLE trail_edges (
                              elevation_end_m   DOUBLE PRECISION,
                              elevation_diff_m  DOUBLE PRECISION,
                              slope_percent     DOUBLE PRECISION,
+                             difficulty_score  DOUBLE PRECISION,
                              difficulty        TEXT,
                              surface           TEXT,
                              nearest_summit_id TEXT,

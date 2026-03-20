@@ -89,14 +89,14 @@ def load_edges(cursor, features: list[dict[str, Any]]) -> int:
           INSERT INTO trail_edges (
               edge_id, start_node_id, end_node_id,
               distance_m, elevation_start_m, elevation_end_m,
-              elevation_diff_m, slope_percent, difficulty,
+              elevation_diff_m, slope_percent, difficulty_score, difficulty,
               surface, nearest_summit_id, qa_status,
               geom
           ) VALUES %s
               ON CONFLICT (edge_id) DO NOTHING
           """
 
-    template = "(%(edge_id)s, %(start_node_id)s, %(end_node_id)s, %(distance_m)s, %(elevation_start_m)s, %(elevation_end_m)s, %(elevation_diff_m)s, %(slope_percent)s, %(difficulty)s, %(surface)s, %(nearest_summit_id)s, %(qa_status)s, ST_SetSRID(ST_GeomFromGeoJSON(%(geom)s), 4326))"
+    template = "(%(edge_id)s, %(start_node_id)s, %(end_node_id)s, %(distance_m)s, %(elevation_start_m)s, %(elevation_end_m)s, %(elevation_diff_m)s, %(slope_percent)s, %(difficulty_score)s, %(difficulty)s, %(surface)s, %(nearest_summit_id)s, %(qa_status)s, ST_SetSRID(ST_GeomFromGeoJSON(%(geom)s), 4326))"
 
     rows = []
     for feat in features:
@@ -113,6 +113,7 @@ def load_edges(cursor, features: list[dict[str, Any]]) -> int:
             "elevation_end_m": props.get("elevation_end_m"),
             "elevation_diff_m": props.get("elevation_diff_m"),
             "slope_percent": props.get("slope_percent"),
+            "difficulty_score": props.get("difficulty_score"),
             "difficulty": props.get("difficulty"),
             "surface": props.get("surface"),
             "nearest_summit_id": props.get("nearest_summit_id"),
