@@ -50,4 +50,12 @@ public class User {
         this.passwordHash = passwordHash;
         this.nickname = nickname;
     }
+
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public void updateProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
+    }
 }
