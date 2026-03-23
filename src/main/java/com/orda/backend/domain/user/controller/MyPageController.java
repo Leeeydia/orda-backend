@@ -2,6 +2,7 @@ package com.orda.backend.domain.user.controller;
 
 import com.orda.backend.common.response.ApiResponse;
 import com.orda.backend.domain.user.dto.request.UpdateProfileRequest;
+import com.orda.backend.domain.user.dto.response.MyPageHikingRecordResponse;
 import com.orda.backend.domain.user.dto.response.MyPageProfileResponse;
 import com.orda.backend.domain.user.dto.response.MyPageStatsResponse;
 import com.orda.backend.domain.user.service.MyPageService;
@@ -11,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/mypage")
@@ -39,5 +42,12 @@ public class MyPageController {
             @Valid @RequestBody UpdateProfileRequest request) {
         MyPageProfileResponse response = myPageService.updateProfile(userDetails.getUserId(), request);
         return ResponseEntity.ok(ApiResponse.success("프로필 수정 성공", response));
+    }
+
+    @GetMapping("/records")
+    public ResponseEntity<ApiResponse<List<MyPageHikingRecordResponse>>> getHikingRecords(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        List<MyPageHikingRecordResponse> response = myPageService.getHikingRecords(userDetails.getUserId());
+        return ResponseEntity.ok(ApiResponse.success("등산 기록 조회 성공", response));
     }
 }
