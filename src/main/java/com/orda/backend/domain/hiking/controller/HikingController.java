@@ -1,8 +1,9 @@
 package com.orda.backend.domain.hiking.controller;
 
+import com.orda.backend.common.geojson.GeoJsonFeatureCollectionResponse;
+import com.orda.backend.common.response.ApiResponse;
 import com.orda.backend.domain.hiking.dto.request.GpsTrackRequest;
 import com.orda.backend.domain.hiking.dto.request.HikingStartRequest;
-import com.orda.backend.domain.hiking.dto.response.GpsTrackResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingEndResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingSessionResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingStartResponse;
@@ -13,8 +14,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/hiking")
 @RequiredArgsConstructor
@@ -23,32 +22,40 @@ public class HikingController {
     private final HikingService hikingService;
 
     @PostMapping("/start")
-    public ResponseEntity<HikingStartResponse> startHiking(@Valid @RequestBody HikingStartRequest request) {
+    public ResponseEntity<ApiResponse<HikingStartResponse>> startHiking(
+            @Valid @RequestBody HikingStartRequest request) {
         HikingStartResponse response = hikingService.startHiking(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("등산 시작 성공", response));
     }
 
     @PostMapping("/{sessionId}/end")
-    public ResponseEntity<HikingEndResponse> endHiking(@PathVariable Long sessionId) {
+    public ResponseEntity<ApiResponse<HikingEndResponse>> endHiking(
+            @PathVariable Long sessionId) {
         HikingEndResponse response = hikingService.endHiking(sessionId);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success("등산 종료 성공", response));
     }
 
     @GetMapping("/{sessionId}")
-    public ResponseEntity<HikingSessionResponse> getSession(@PathVariable Long sessionId) {
-        return ResponseEntity.ok(hikingService.getSession(sessionId));
+    public ResponseEntity<ApiResponse<HikingSessionResponse>> getSession(
+            @PathVariable Long sessionId) {
+        HikingSessionResponse response = hikingService.getSession(sessionId);
+        return ResponseEntity.ok(ApiResponse.success("세션 조회 성공", response));
     }
 
     @PostMapping("/{sessionId}/tracks")
-    public ResponseEntity<Void> saveGpsTrack(
+    public ResponseEntity<ApiResponse<Void>> saveGpsTrack(
             @PathVariable Long sessionId,
             @RequestBody GpsTrackRequest request) {
         hikingService.saveGpsTrack(sessionId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("GPS 저장 성공", null));
     }
 
     @GetMapping("/{sessionId}/tracks")
-    public ResponseEntity<List<GpsTrackResponse>> getTracks(@PathVariable Long sessionId) {
-        return ResponseEntity.ok(hikingService.getTracks(sessionId));
+    public ResponseEntity<ApiResponse<GeoJsonFeatureCollectionResponse>> getTracks(
+            @PathVariable Long sessionId) {
+        GeoJsonFeatureCollectionResponse response = hikingService.getTracks(sessionId);
+        return ResponseEntity.ok(ApiResponse.success("GPS 트랙 조회 성공", response));
     }
 }

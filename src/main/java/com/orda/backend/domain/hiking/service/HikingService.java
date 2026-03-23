@@ -1,8 +1,10 @@
 package com.orda.backend.domain.hiking.service;
 
+import com.orda.backend.common.geojson.GeoJsonFeatureCollectionResponse;
+import com.orda.backend.common.geojson.GeoJsonFeatureResponse;
+import com.orda.backend.common.geojson.GeoJsonGeometryResponse;
 import com.orda.backend.domain.hiking.dto.request.GpsTrackRequest;
 import com.orda.backend.domain.hiking.dto.request.HikingStartRequest;
-import com.orda.backend.domain.hiking.dto.response.GpsTrackResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingEndResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingSessionResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingStartResponse;
@@ -18,7 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -81,10 +85,26 @@ public class HikingService {
         gpsTrackRepository.save(track);
     }
 
-    public List<GpsTrackResponse> getTracks(Long sessionId) {
-        return gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId)
-                .stream()
-                .map(GpsTrackResponse::new)
+    public GeoJsonFeatureCollectionResponse getTracks(Long sessionId) {
+        List<GpsTrack> tracks = gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId);
+
+        List<GeoJsonFeatureResponse> features = tracks.stream()
+                .map(track -> {
+                    GeoJsonGeometryResponse geometry = GeoJsonGeometryResponse.point(
+                            track.getGeom().getX(),
+                            track.getGeom().getY()
+                    );
+                    Map<String, Object> properties = new HashMap<>();
+                    properties.put("trackId", track.getTrackId());
+                    properties.put("sequenceNum", track.getSequenceNum());
+                    properties.put("elevationM", track.getElevationM());
+                    properties.put("accuracyM", track.getAccuracyM());
+                    properties.put("recordedAt", track.getRecordedAt().toString());
+
+                    return GeoJsonFeatureResponse.of(geometry, properties);
+                })
                 .toList();
+
+        return GeoJsonFeatureCollectionResponse.of(features);
     }
 }
