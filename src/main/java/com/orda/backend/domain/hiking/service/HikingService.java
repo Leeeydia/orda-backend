@@ -18,6 +18,7 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.orda.backend.domain.hiking.dto.response.ElevationProfileResponse;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -32,6 +33,7 @@ public class HikingService {
     private final HikingRecordRepository hikingRecordRepository;
     private final GpsTrackRepository gpsTrackRepository;
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
+    private final ElevationProfileCalculator elevationProfileCalculator;
 
     @Transactional
     public HikingStartResponse startHiking(HikingStartRequest request) {
@@ -83,6 +85,15 @@ public class HikingService {
                 .build();
 
         gpsTrackRepository.save(track);
+    }
+
+    public ElevationProfileResponse getElevationProfile(Long sessionId) {
+        HikingRecord record = hikingRecordRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + sessionId));
+
+        List<GpsTrack> tracks = gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId);
+
+        return elevationProfileCalculator.calculate(record.getId(), tracks);
     }
 
     public GeoJsonFeatureCollectionResponse getTracks(Long sessionId) {
