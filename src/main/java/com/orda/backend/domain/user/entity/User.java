@@ -58,4 +58,9 @@ public class User {
     public void updateProfileImageUrl(String profileImageUrl) {
         this.profileImageUrl = profileImageUrl;
     }
+
+    // [윤종민] 비밀번호 변경을 위해 추가
+    public void updatePassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
 }

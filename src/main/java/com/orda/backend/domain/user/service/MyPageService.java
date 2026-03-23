@@ -3,6 +3,7 @@ package com.orda.backend.domain.user.service;
 import com.orda.backend.domain.hiking.entity.HikingRecord;
 import com.orda.backend.domain.hiking.repository.HikingRecordRepository;
 import com.orda.backend.domain.stats.repository.UserStatsRepository;
+import com.orda.backend.domain.user.dto.request.ChangePasswordRequest;
 import com.orda.backend.domain.user.dto.request.UpdateProfileRequest;
 import com.orda.backend.domain.user.dto.response.MyPageHikingRecordResponse;
 import com.orda.backend.domain.user.dto.response.MyPageProfileResponse;
@@ -10,6 +11,7 @@ import com.orda.backend.domain.user.dto.response.MyPageStatsResponse;
 import com.orda.backend.domain.user.entity.User;
 import com.orda.backend.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +25,7 @@ public class MyPageService {
     private final UserRepository userRepository;
     private final UserStatsRepository userStatsRepository;
     private final HikingRecordRepository hikingRecordRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public MyPageProfileResponse getProfile(Long userId) {
@@ -64,5 +67,15 @@ public class MyPageService {
         return records.stream()
                 .map(MyPageHikingRecordResponse::from)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void changePassword(Long userId, ChangePasswordRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다"));
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("현재 비밀번호가 올바르지 않습니다");
+        }
+        user.updatePassword(passwordEncoder.encode(request.getNewPassword()));
     }
 }

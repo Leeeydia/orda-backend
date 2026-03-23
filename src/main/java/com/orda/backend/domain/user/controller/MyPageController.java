@@ -1,6 +1,7 @@
 package com.orda.backend.domain.user.controller;
 
 import com.orda.backend.common.response.ApiResponse;
+import com.orda.backend.domain.user.dto.request.ChangePasswordRequest;
 import com.orda.backend.domain.user.dto.request.UpdateProfileRequest;
 import com.orda.backend.domain.user.dto.response.MyPageHikingRecordResponse;
 import com.orda.backend.domain.user.dto.response.MyPageProfileResponse;
@@ -49,5 +50,13 @@ public class MyPageController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         List<MyPageHikingRecordResponse> response = myPageService.getHikingRecords(userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success("등산 기록 조회 성공", response));
+    }
+
+    @PatchMapping("/password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        myPageService.changePassword(userDetails.getUserId(), request);
+        return ResponseEntity.ok(ApiResponse.success("비밀번호 변경 성공", null));
     }
 }
