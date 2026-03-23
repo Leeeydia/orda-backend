@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.orda.backend.domain.hiking.dto.response.ElevationProfileResponse;
 
 @RestController
 @RequestMapping("/api/hiking")
@@ -57,5 +58,12 @@ public class HikingController {
             @PathVariable Long sessionId) {
         GeoJsonFeatureCollectionResponse response = hikingService.getTracks(sessionId);
         return ResponseEntity.ok(ApiResponse.success("GPS 트랙 조회 성공", response));
+    }
+
+    @GetMapping("/{sessionId}/elevation-profile")
+    public ResponseEntity<ApiResponse<ElevationProfileResponse>> getElevationProfile(
+            @PathVariable Long sessionId) {
+        ElevationProfileResponse response = hikingService.getElevationProfile(sessionId);
+        return ResponseEntity.ok(ApiResponse.success("고도 프로파일 조회 성공", response));
     }
 }
