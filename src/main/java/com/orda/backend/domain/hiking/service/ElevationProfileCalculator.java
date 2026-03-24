@@ -4,14 +4,19 @@ import com.orda.backend.domain.hiking.dto.response.ElevationProfilePointResponse
 import com.orda.backend.domain.hiking.dto.response.ElevationProfileResponse;
 import com.orda.backend.domain.hiking.dto.response.ElevationProfileSummaryResponse;
 import com.orda.backend.domain.hiking.entity.GpsTrack;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+//  내부 haversine 중복 제거 - TrackStatsCalculator 주입하여 거리 계산 위임
 @Component
+@RequiredArgsConstructor
 public class ElevationProfileCalculator {
+
+    private final TrackStatsCalculator trackStatsCalculator;
 
     public ElevationProfileResponse calculate(Long sessionId, List<GpsTrack> tracks) {
         if (tracks == null || tracks.size() < 2) {
@@ -44,7 +49,11 @@ public class ElevationProfileCalculator {
             double elevationDiffMeters = 0.0;
 
             if (previous != null) {
-                segmentDistanceMeters = calculateDistanceMeters(previous, current);
+                //  기존 내부 haversineMeters() 제거 후 TrackStatsCalculator.haversine()으로 대체
+                segmentDistanceMeters = trackStatsCalculator.haversine(
+                        previous.getGeom().getY(), previous.getGeom().getX(),
+                        current.getGeom().getY(), current.getGeom().getX()
+                );
                 cumulativeDistanceMeters += segmentDistanceMeters;
 
                 elevationDiffMeters = elevation - previous.getElevationM();
@@ -103,31 +112,5 @@ public class ElevationProfileCalculator {
         if (track.getSequenceNum() == null) {
             throw new IllegalArgumentException("sequence 정보가 없습니다. trackId=" + track.getTrackId());
         }
-    }
-
-    private double calculateDistanceMeters(GpsTrack previous, GpsTrack current) {
-        double lat1 = previous.getGeom().getY();
-        double lon1 = previous.getGeom().getX();
-        double lat2 = current.getGeom().getY();
-        double lon2 = current.getGeom().getX();
-
-        return haversineMeters(lat1, lon1, lat2, lon2);
-    }
-
-    private double haversineMeters(double lat1, double lon1, double lat2, double lon2) {
-        final double earthRadiusMeters = 6371000.0;
-
-        double latRad1 = Math.toRadians(lat1);
-        double latRad2 = Math.toRadians(lat2);
-        double deltaLat = Math.toRadians(lat2 - lat1);
-        double deltaLon = Math.toRadians(lon2 - lon1);
-
-        double a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2)
-                + Math.cos(latRad1) * Math.cos(latRad2)
-                * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
-
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        return earthRadiusMeters * c;
     }
 }

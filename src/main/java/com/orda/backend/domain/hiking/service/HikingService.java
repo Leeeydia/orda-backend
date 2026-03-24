@@ -5,6 +5,7 @@ import com.orda.backend.common.geojson.GeoJsonFeatureResponse;
 import com.orda.backend.common.geojson.GeoJsonGeometryResponse;
 import com.orda.backend.domain.hiking.dto.request.GpsTrackRequest;
 import com.orda.backend.domain.hiking.dto.request.HikingStartRequest;
+import com.orda.backend.domain.hiking.dto.response.ElevationProfileResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingEndResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingSessionResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingStartResponse;
@@ -12,15 +13,17 @@ import com.orda.backend.domain.hiking.entity.GpsTrack;
 import com.orda.backend.domain.hiking.entity.HikingRecord;
 import com.orda.backend.domain.hiking.repository.GpsTrackRepository;
 import com.orda.backend.domain.hiking.repository.HikingRecordRepository;
+import com.orda.backend.domain.stats.entity.UserStats;
+import com.orda.backend.domain.stats.repository.UserStatsRepository;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.orda.backend.domain.hiking.dto.response.ElevationProfileResponse;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,8 +35,15 @@ public class HikingService {
 
     private final HikingRecordRepository hikingRecordRepository;
     private final GpsTrackRepository gpsTrackRepository;
+
+    //  등산 종료 시 user_stats 업데이트를 위해 추가
+    private final UserStatsRepository userStatsRepository;
+
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
     private final ElevationProfileCalculator elevationProfileCalculator;
+
+    //  중복 계산 로직을 TrackStatsCalculator로 분리하여 주입
+    private final TrackStatsCalculator trackStatsCalculator;
 
     @Transactional
     public HikingStartResponse startHiking(HikingStartRequest request) {
@@ -43,7 +53,6 @@ public class HikingService {
                 .build();
 
         HikingRecord saved = hikingRecordRepository.save(session);
-
         return new HikingStartResponse(saved.getId(), saved.getStartedAt());
     }
 
@@ -54,6 +63,25 @@ public class HikingService {
 
         LocalDateTime endedAt = LocalDateTime.now();
         session.complete(endedAt);
+
+        //  GPS 트랙 집계 후 세션 통계 및 user_stats 업데이트
+        // 직접 계산하던 로직을 TrackStatsCalculator로 위임
+        List<GpsTrack> tracks = gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId);
+        if (!tracks.isEmpty()) {
+            double totalDistanceM = trackStatsCalculator.calculateTotalDistance(tracks);
+            double totalElevationGainM = trackStatsCalculator.calculateElevationGain(tracks);
+            double totalElevationLossM = trackStatsCalculator.calculateElevationLoss(tracks);
+            int totalDurationSec = (int) ChronoUnit.SECONDS.between(session.getStartedAt(), endedAt);
+
+            session.updateStats(totalDistanceM, totalElevationGainM, totalElevationLossM, totalDurationSec);
+
+            UserStats stats = userStatsRepository.findByUserId(session.getUserId())
+                    .orElseGet(() -> {
+                        UserStats newStats = UserStats.createForUser(session.getUserId());
+                        return userStatsRepository.save(newStats);
+                    });
+            stats.addHiking(totalDistanceM, totalElevationGainM, totalDurationSec, endedAt);
+        }
 
         return new HikingEndResponse(session.getId(), session.getEndedAt());
     }
@@ -92,7 +120,6 @@ public class HikingService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + sessionId));
 
         List<GpsTrack> tracks = gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId);
-
         return elevationProfileCalculator.calculate(record.getId(), tracks);
     }
 

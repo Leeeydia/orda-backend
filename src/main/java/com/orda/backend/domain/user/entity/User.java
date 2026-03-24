@@ -50,4 +50,17 @@ public class User {
         this.passwordHash = passwordHash;
         this.nickname = nickname;
     }
+
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public void updateProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
+    }
+
+    // [윤종민] 비밀번호 변경을 위해 추가
+    public void updatePassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
 }

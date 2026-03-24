@@ -80,6 +80,15 @@ public class HikingRecord {
         this.endedAt = endedAt;
     }
 
+    // [윤종민] 등산 종료 시 GPS 트랙 집계 결과를 세션에 저장하기 위해 추가
+    public void updateStats(Double totalDistanceM, Double totalElevationGainM,
+                            Double totalElevationLossM, Integer totalDurationSec) {
+        this.totalDistanceM = totalDistanceM;
+        this.totalElevationGainM = totalElevationGainM;
+        this.totalElevationLossM = totalElevationLossM;
+        this.totalDurationSec = totalDurationSec;
+    }
+
     private void validateNotFinished() {
         if (this.status == HikingStatus.COMPLETED || this.status == HikingStatus.ABANDONED) {
             throw new IllegalStateException("이미 종료된 등산 세션입니다. 현재 상태: " + this.status);
