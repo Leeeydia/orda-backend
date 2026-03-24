@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -58,5 +59,22 @@ public class MyPageController {
             @Valid @RequestBody ChangePasswordRequest request) {
         myPageService.changePassword(userDetails.getUserId(), request);
         return ResponseEntity.ok(ApiResponse.success("비밀번호 변경 성공", null));
+    }
+
+    //  프로필 이미지 파일 업로드 - multipart/form-data, key명 file
+    @PostMapping(value = "/profile-image", consumes = "multipart/form-data")
+    public ResponseEntity<ApiResponse<String>> uploadProfileImage(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestPart("file") MultipartFile file) {
+        String imageUrl = myPageService.uploadProfileImage(userDetails.getUserId(), file);
+        return ResponseEntity.ok(ApiResponse.success("프로필 이미지 업로드 성공", imageUrl));
+    }
+
+    //  프로필 이미지 삭제 - 파일 삭제 + DB null 처리
+    @DeleteMapping("/profile-image")
+    public ResponseEntity<ApiResponse<Void>> deleteProfileImage(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        myPageService.deleteProfileImage(userDetails.getUserId());
+        return ResponseEntity.ok(ApiResponse.success("프로필 이미지 삭제 성공", null));
     }
 }
