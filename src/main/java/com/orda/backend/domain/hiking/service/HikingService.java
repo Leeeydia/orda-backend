@@ -5,6 +5,7 @@ import com.orda.backend.common.geojson.GeoJsonFeatureResponse;
 import com.orda.backend.common.geojson.GeoJsonGeometryResponse;
 import com.orda.backend.domain.hiking.dto.request.GpsTrackRequest;
 import com.orda.backend.domain.hiking.dto.request.HikingStartRequest;
+import com.orda.backend.domain.hiking.dto.response.ElevationProfileResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingEndResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingSessionResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingStartResponse;
@@ -20,7 +21,6 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.orda.backend.domain.hiking.dto.response.ElevationProfileResponse;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -36,11 +36,14 @@ public class HikingService {
     private final HikingRecordRepository hikingRecordRepository;
     private final GpsTrackRepository gpsTrackRepository;
 
-    // [윤종민] 등산 종료 시 user_stats 업데이트를 위해 추가
+    //  등산 종료 시 user_stats 업데이트를 위해 추가
     private final UserStatsRepository userStatsRepository;
 
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
     private final ElevationProfileCalculator elevationProfileCalculator;
+
+    //  중복 계산 로직을 TrackStatsCalculator로 분리하여 주입
+    private final TrackStatsCalculator trackStatsCalculator;
 
     @Transactional
     public HikingStartResponse startHiking(HikingStartRequest request) {
@@ -50,7 +53,6 @@ public class HikingService {
                 .build();
 
         HikingRecord saved = hikingRecordRepository.save(session);
-
         return new HikingStartResponse(saved.getId(), saved.getStartedAt());
     }
 
@@ -62,12 +64,13 @@ public class HikingService {
         LocalDateTime endedAt = LocalDateTime.now();
         session.complete(endedAt);
 
-        // [윤종민] GPS 트랙 집계 후 세션 통계 및 user_stats 업데이트
+        //  GPS 트랙 집계 후 세션 통계 및 user_stats 업데이트
+        // 직접 계산하던 로직을 TrackStatsCalculator로 위임
         List<GpsTrack> tracks = gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId);
         if (!tracks.isEmpty()) {
-            double totalDistanceM = calculateTotalDistance(tracks);
-            double totalElevationGainM = calculateElevationGain(tracks);
-            double totalElevationLossM = calculateElevationLoss(tracks);
+            double totalDistanceM = trackStatsCalculator.calculateTotalDistance(tracks);
+            double totalElevationGainM = trackStatsCalculator.calculateElevationGain(tracks);
+            double totalElevationLossM = trackStatsCalculator.calculateElevationLoss(tracks);
             int totalDurationSec = (int) ChronoUnit.SECONDS.between(session.getStartedAt(), endedAt);
 
             session.updateStats(totalDistanceM, totalElevationGainM, totalElevationLossM, totalDurationSec);
@@ -117,7 +120,6 @@ public class HikingService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + sessionId));
 
         List<GpsTrack> tracks = gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId);
-
         return elevationProfileCalculator.calculate(record.getId(), tracks);
     }
 
@@ -142,54 +144,5 @@ public class HikingService {
                 .toList();
 
         return GeoJsonFeatureCollectionResponse.of(features);
-    }
-
-    // [윤종민] GPS 포인트 간 거리 합산 (Haversine 공식 사용)
-    private double calculateTotalDistance(List<GpsTrack> tracks) {
-        double totalDistance = 0.0;
-        for (int i = 1; i < tracks.size(); i++) {
-            totalDistance += haversine(
-                    tracks.get(i - 1).getGeom().getY(), tracks.get(i - 1).getGeom().getX(),
-                    tracks.get(i).getGeom().getY(), tracks.get(i).getGeom().getX()
-            );
-        }
-        return totalDistance;
-    }
-
-    // [윤종민] 고도 상승분 합산
-    private double calculateElevationGain(List<GpsTrack> tracks) {
-        double gain = 0.0;
-        for (int i = 1; i < tracks.size(); i++) {
-            Double prev = tracks.get(i - 1).getElevationM();
-            Double curr = tracks.get(i).getElevationM();
-            if (prev != null && curr != null && curr > prev) {
-                gain += curr - prev;
-            }
-        }
-        return gain;
-    }
-
-    // [윤종민] 고도 하강분 합산
-    private double calculateElevationLoss(List<GpsTrack> tracks) {
-        double loss = 0.0;
-        for (int i = 1; i < tracks.size(); i++) {
-            Double prev = tracks.get(i - 1).getElevationM();
-            Double curr = tracks.get(i).getElevationM();
-            if (prev != null && curr != null && curr < prev) {
-                loss += prev - curr;
-            }
-        }
-        return loss;
-    }
-
-    // [윤종민] 두 좌표 간 거리 계산 (단위: 미터)
-    private double haversine(double lat1, double lon1, double lat2, double lon2) {
-        final int R = 6371000;
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLon = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 }
