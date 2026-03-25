@@ -9,6 +9,9 @@ import com.orda.backend.domain.hiking.dto.response.ElevationProfileResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingEndResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingSessionResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingStartResponse;
+import com.orda.backend.domain.hiking.dto.response.ReplayPointResponse;
+import com.orda.backend.domain.hiking.dto.response.ReplayResponse;
+import com.orda.backend.domain.hiking.dto.response.ReplaySummaryResponse;
 import com.orda.backend.domain.hiking.entity.GpsTrack;
 import com.orda.backend.domain.hiking.entity.HikingRecord;
 import com.orda.backend.domain.hiking.model.EnrichedTrackPoint;
@@ -40,6 +43,7 @@ public class HikingService {
     private final ElevationProfileBuilder elevationProfileBuilder;
     private final EnrichedTrackPointBuilder enrichedTrackPointBuilder;
     private final TrackStatsCalculator trackStatsCalculator;
+    private final ReplayCalculator replayCalculator;
 
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
@@ -123,6 +127,35 @@ public class HikingService {
         return elevationProfileBuilder.build(record.getId(), enrichedPoints);
     }
 
+    public ReplayResponse getReplay(Long sessionId, Integer maxPoints, Integer targetDurationSeconds) {
+        HikingRecord record = hikingRecordRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + sessionId));
+
+        List<GpsTrack> tracks = gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId);
+        validateReplayTracks(tracks, sessionId);
+
+        List<EnrichedTrackPoint> enrichedPoints = enrichedTrackPointBuilder.build(tracks);
+
+        ReplaySummaryResponse summary = ReplaySummaryResponse.builder()
+                .totalDistanceMeters(trackStatsCalculator.calculateTotalDistance(enrichedPoints))
+                .totalElevationGainMeters(trackStatsCalculator.calculateElevationGain(enrichedPoints))
+                .totalElevationLossMeters(trackStatsCalculator.calculateElevationLoss(enrichedPoints))
+                .totalElapsedSeconds(trackStatsCalculator.calculateTotalDurationSeconds(enrichedPoints))
+                .build();
+
+        List<ReplayPointResponse> replayPoints = replayCalculator.calculate(
+                enrichedPoints,
+                maxPoints,
+                targetDurationSeconds
+        );
+
+        return ReplayResponse.builder()
+                .sessionId(record.getId())
+                .summary(summary)
+                .points(replayPoints)
+                .build();
+    }
+
     public GeoJsonFeatureCollectionResponse getTracks(Long sessionId) {
         List<GpsTrack> tracks = gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId);
 
@@ -144,5 +177,11 @@ public class HikingService {
                 .toList();
 
         return GeoJsonFeatureCollectionResponse.of(features);
+    }
+
+    private void validateReplayTracks(List<GpsTrack> tracks, Long sessionId) {
+        if (tracks == null || tracks.size() < 2) {
+            throw new IllegalArgumentException("리플레이 생성을 위한 GPS 포인트가 부족합니다. sessionId=" + sessionId);
+        }
     }
 }
