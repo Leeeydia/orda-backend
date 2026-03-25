@@ -24,7 +24,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,10 +65,11 @@ public class HikingService {
         List<GpsTrack> tracks = gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId);
         if (!tracks.isEmpty()) {
             List<EnrichedTrackPoint> enrichedPoints = enrichedTrackPointBuilder.build(tracks);
+
             double totalDistanceM = trackStatsCalculator.calculateTotalDistance(enrichedPoints);
             double totalElevationGainM = trackStatsCalculator.calculateElevationGain(enrichedPoints);
             double totalElevationLossM = trackStatsCalculator.calculateElevationLoss(enrichedPoints);
-            int totalDurationSec = (int) ChronoUnit.SECONDS.between(session.getStartedAt(), endedAt);
+            int totalDurationSec = trackStatsCalculator.calculateTotalDurationSeconds(enrichedPoints);
 
             session.updateStats(totalDistanceM, totalElevationGainM, totalElevationLossM, totalDurationSec);
 
@@ -118,7 +118,9 @@ public class HikingService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + sessionId));
 
         List<GpsTrack> tracks = gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId);
-        return elevationProfileBuilder.calculate(record.getId(), tracks);
+        List<EnrichedTrackPoint> enrichedPoints = enrichedTrackPointBuilder.build(tracks);
+
+        return elevationProfileBuilder.build(record.getId(), enrichedPoints);
     }
 
     public GeoJsonFeatureCollectionResponse getTracks(Long sessionId) {
