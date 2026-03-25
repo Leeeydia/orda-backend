@@ -33,6 +33,8 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/hiking/**").permitAll()  // TODO: feat/auth 완료 후 제거
+                        .requestMatchers("/api/summit/**").permitAll()  // TODO: feat/auth 완료 후 제거
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(
