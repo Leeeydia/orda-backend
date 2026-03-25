@@ -38,7 +38,7 @@ public class HikingService {
     private final GpsTrackRepository gpsTrackRepository;
     private final UserStatsRepository userStatsRepository;
 
-    private final ElevationProfileCalculator elevationProfileCalculator;
+    private final ElevationProfileBuilder elevationProfileBuilder;
     private final EnrichedTrackPointBuilder enrichedTrackPointBuilder;
     private final TrackStatsCalculator trackStatsCalculator;
 
@@ -118,7 +118,7 @@ public class HikingService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + sessionId));
 
         List<GpsTrack> tracks = gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId);
-        return elevationProfileCalculator.calculate(record.getId(), tracks);
+        return elevationProfileBuilder.calculate(record.getId(), tracks);
     }
 
     public GeoJsonFeatureCollectionResponse getTracks(Long sessionId) {
