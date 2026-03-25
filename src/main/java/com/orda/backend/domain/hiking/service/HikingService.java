@@ -11,6 +11,7 @@ import com.orda.backend.domain.hiking.dto.response.HikingSessionResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingStartResponse;
 import com.orda.backend.domain.hiking.entity.GpsTrack;
 import com.orda.backend.domain.hiking.entity.HikingRecord;
+import com.orda.backend.domain.hiking.model.EnrichedTrackPoint;
 import com.orda.backend.domain.hiking.repository.GpsTrackRepository;
 import com.orda.backend.domain.hiking.repository.HikingRecordRepository;
 import com.orda.backend.domain.stats.entity.UserStats;
@@ -35,15 +36,13 @@ public class HikingService {
 
     private final HikingRecordRepository hikingRecordRepository;
     private final GpsTrackRepository gpsTrackRepository;
-
-    //  등산 종료 시 user_stats 업데이트를 위해 추가
     private final UserStatsRepository userStatsRepository;
 
-    private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
     private final ElevationProfileCalculator elevationProfileCalculator;
-
-    //  중복 계산 로직을 TrackStatsCalculator로 분리하여 주입
+    private final EnrichedTrackPointBuilder enrichedTrackPointBuilder;
     private final TrackStatsCalculator trackStatsCalculator;
+
+    private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
     @Transactional
     public HikingStartResponse startHiking(HikingStartRequest request) {
@@ -64,13 +63,12 @@ public class HikingService {
         LocalDateTime endedAt = LocalDateTime.now();
         session.complete(endedAt);
 
-        //  GPS 트랙 집계 후 세션 통계 및 user_stats 업데이트
-        // 직접 계산하던 로직을 TrackStatsCalculator로 위임
         List<GpsTrack> tracks = gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId);
         if (!tracks.isEmpty()) {
-            double totalDistanceM = trackStatsCalculator.calculateTotalDistance(tracks);
-            double totalElevationGainM = trackStatsCalculator.calculateElevationGain(tracks);
-            double totalElevationLossM = trackStatsCalculator.calculateElevationLoss(tracks);
+            List<EnrichedTrackPoint> enrichedPoints = enrichedTrackPointBuilder.build(tracks);
+            double totalDistanceM = trackStatsCalculator.calculateTotalDistance(enrichedPoints);
+            double totalElevationGainM = trackStatsCalculator.calculateElevationGain(enrichedPoints);
+            double totalElevationLossM = trackStatsCalculator.calculateElevationLoss(enrichedPoints);
             int totalDurationSec = (int) ChronoUnit.SECONDS.between(session.getStartedAt(), endedAt);
 
             session.updateStats(totalDistanceM, totalElevationGainM, totalElevationLossM, totalDurationSec);

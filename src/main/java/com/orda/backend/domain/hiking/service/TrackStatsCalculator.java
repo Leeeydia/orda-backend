@@ -1,32 +1,25 @@
 package com.orda.backend.domain.hiking.service;
 
-import com.orda.backend.domain.hiking.entity.GpsTrack;
+import com.orda.backend.domain.hiking.model.EnrichedTrackPoint;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-// HikingService와 ElevationProfileCalculator에서 중복 사용되던 거리/고도 계산 로직을 공용 계산기로 분리
 @Component
 public class TrackStatsCalculator {
 
-    // 총 이동 거리 계산 (GPS 포인트 간 거리 합산)
-    public double calculateTotalDistance(List<GpsTrack> tracks) {
-        double totalDistance = 0.0;
-        for (int i = 1; i < tracks.size(); i++) {
-            totalDistance += haversine(
-                    tracks.get(i - 1).getGeom().getY(), tracks.get(i - 1).getGeom().getX(),
-                    tracks.get(i).getGeom().getY(), tracks.get(i).getGeom().getX()
-            );
+    public double calculateTotalDistance(List<EnrichedTrackPoint> points) {
+        if (points == null || points.isEmpty()) {
+            return 0.0;
         }
-        return totalDistance;
+        return points.get(points.size() - 1).getDistanceFromStartM();
     }
 
-    // 총 상승 고도 계산
-    public double calculateElevationGain(List<GpsTrack> tracks) {
+    public double calculateElevationGain(List<EnrichedTrackPoint> points) {
         double gain = 0.0;
-        for (int i = 1; i < tracks.size(); i++) {
-            Double prev = tracks.get(i - 1).getElevationM();
-            Double curr = tracks.get(i).getElevationM();
+        for (int i = 1; i < points.size(); i++) {
+            Double prev = points.get(i - 1).getElevationM();
+            Double curr = points.get(i).getElevationM();
             if (prev != null && curr != null && curr > prev) {
                 gain += curr - prev;
             }
@@ -34,12 +27,11 @@ public class TrackStatsCalculator {
         return gain;
     }
 
-    // 총 하강 고도 계산
-    public double calculateElevationLoss(List<GpsTrack> tracks) {
+    public double calculateElevationLoss(List<EnrichedTrackPoint> points) {
         double loss = 0.0;
-        for (int i = 1; i < tracks.size(); i++) {
-            Double prev = tracks.get(i - 1).getElevationM();
-            Double curr = tracks.get(i).getElevationM();
+        for (int i = 1; i < points.size(); i++) {
+            Double prev = points.get(i - 1).getElevationM();
+            Double curr = points.get(i).getElevationM();
             if (prev != null && curr != null && curr < prev) {
                 loss += prev - curr;
             }
@@ -47,14 +39,49 @@ public class TrackStatsCalculator {
         return loss;
     }
 
-    // 두 좌표 간 거리 계산 (Haversine 공식, 단위: 미터)
-    public double haversine(double lat1, double lon1, double lat2, double lon2) {
-        final double R = 6371000.0;
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLon = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    public Double calculateMinElevation(List<EnrichedTrackPoint> points) {
+        Double min = null;
+        for (EnrichedTrackPoint point : points) {
+            Double elevation = point.getElevationM();
+            if (elevation == null) {
+                continue;
+            }
+            min = (min == null) ? elevation : Math.min(min, elevation);
+        }
+        return min;
+    }
+
+    public Double calculateMaxElevation(List<EnrichedTrackPoint> points) {
+        Double max = null;
+        for (EnrichedTrackPoint point : points) {
+            Double elevation = point.getElevationM();
+            if (elevation == null) {
+                continue;
+            }
+            max = (max == null) ? elevation : Math.max(max, elevation);
+        }
+        return max;
+    }
+
+    public int calculatePointCount(List<EnrichedTrackPoint> points) {
+        return points == null ? 0 : points.size();
+    }
+
+    public int calculateTotalDurationSeconds(List<EnrichedTrackPoint> points) {
+        if (points == null || points.isEmpty()) {
+            return 0;
+        }
+
+        Long maxElapsed = null;
+        for (EnrichedTrackPoint point : points) {
+            if (point.getActualElapsedSeconds() == null) {
+                continue;
+            }
+            maxElapsed = (maxElapsed == null)
+                    ? point.getActualElapsedSeconds()
+                    : Math.max(maxElapsed, point.getActualElapsedSeconds());
+        }
+
+        return maxElapsed == null ? 0 : maxElapsed.intValue();
     }
 }
