@@ -1,6 +1,5 @@
 package com.orda.backend.domain.user.service;
 
-import com.orda.backend.common.response.ApiResponse;
 import com.orda.backend.domain.user.dto.request.LoginRequest;
 import com.orda.backend.domain.user.dto.request.SignupRequest;
 import com.orda.backend.domain.user.dto.response.LoginResponse;
@@ -28,11 +27,20 @@ public class AuthService {
         if (userRepository.existsByNickname(request.getNickname())) {
             throw new IllegalArgumentException("이미 사용 중인 닉네임입니다");
         }
+        if (userRepository.existsByPhone(request.getPhone())) {
+            throw new IllegalArgumentException("이미 사용 중인 전화번호입니다");
+        }
+        if (request.getPassword().equalsIgnoreCase(request.getEmail())) {
+            throw new IllegalArgumentException("비밀번호는 이메일과 동일할 수 없습니다");
+        }
 
         User user = User.builder()
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .nickname(request.getNickname())
+                .name(request.getName())
+                .phone(request.getPhone())
+                .birthDate(request.getBirthDate())
                 .build();
 
         userRepository.save(user);
