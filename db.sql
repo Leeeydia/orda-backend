@@ -80,10 +80,13 @@ CREATE INDEX idx_summit_points_geom ON summit_points USING GIST (geom);
 -- ──────────────────────────────────────────────
 CREATE TABLE users
 (
-    user_id           BIGSERIAL PRIMARY KEY,
+    user_id           BIGSERIAL    PRIMARY KEY,
     email             VARCHAR(255) NOT NULL UNIQUE,
     password_hash     VARCHAR(255) NOT NULL,
     nickname          VARCHAR(50)  NOT NULL,
+    name              VARCHAR(50)  NOT NULL,
+    phone             VARCHAR(20)  NOT NULL UNIQUE,
+    birth_date        DATE,
     profile_image_url VARCHAR(500),
     created_at        TIMESTAMP    NOT NULL DEFAULT now(),
     updated_at        TIMESTAMP    NOT NULL DEFAULT now()
@@ -92,8 +95,17 @@ CREATE TABLE users
 COMMENT ON TABLE  users IS '사용자 계정 (기능정의서 No.1 회원가입, No.2 로그인/로그아웃)';
 COMMENT ON COLUMN users.email IS '로그인 식별자, 이메일 기반 회원가입';
 COMMENT ON COLUMN users.password_hash IS 'BCrypt 해시 처리된 비밀번호';
+COMMENT ON COLUMN users.nickname IS '서비스 내 표시 이름';
+COMMENT ON COLUMN users.name IS '실명 (필수)';
+COMMENT ON COLUMN users.phone IS '전화번호 (필수, 010-XXXX-XXXX)';
+COMMENT ON COLUMN users.birth_date IS '생년월일 (선택)';
+
+-- 도전과제: 카카오 소셜 로그인 추가 시
+-- ALTER TABLE users ADD COLUMN kakao_id VARCHAR(50) UNIQUE;
+-- ALTER TABLE users ADD COLUMN provider VARCHAR(20) NOT NULL DEFAULT 'local'; -- local / kakao
 
 CREATE INDEX idx_users_email ON users (email);
+CREATE INDEX idx_users_phone ON users (phone);
 
 
 -- ──────────────────────────────────────────────
@@ -247,4 +259,5 @@ CREATE INDEX idx_user_stats_user_id ON user_stats (user_id);
 -- No.5 리더보드             → leaderboard 테이블 (추후 추가)
 -- No.6 다음 산 추천         → 추천 알고리즘 (trail_edges + user_stats 기반)
 -- No.7 산/코스 리뷰         → reviews 테이블 (추후 추가)
+-- No.8 카카오 소셜 로그인    → users.kakao_id, users.provider 컬럼 추가 예정
 -- ============================================================
