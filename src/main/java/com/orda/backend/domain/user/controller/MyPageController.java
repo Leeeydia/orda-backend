@@ -1,14 +1,11 @@
 package com.orda.backend.domain.user.controller;
 
 import com.orda.backend.common.response.ApiResponse;
-import com.orda.backend.domain.user.dto.request.ChangePasswordRequest;
-import com.orda.backend.domain.user.dto.request.UpdateProfileRequest;
 import com.orda.backend.domain.user.dto.response.MyPageHikingRecordResponse;
 import com.orda.backend.domain.user.dto.response.MyPageProfileResponse;
 import com.orda.backend.domain.user.dto.response.MyPageStatsResponse;
 import com.orda.backend.domain.user.service.MyPageService;
 import com.orda.backend.security.CustomUserDetails;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,7 +21,7 @@ public class MyPageController {
 
     private final MyPageService myPageService;
 
-    // [윤종민] TODO: 프론트 로그인 구현 완료 후 임시 userId 제거
+    // TODO: 프론트 로그인 구현 완료 후 임시 userId 제거
     private Long resolveUserId(CustomUserDetails userDetails) {
         return userDetails != null ? userDetails.getUserId() : 1L;
     }
@@ -43,14 +40,6 @@ public class MyPageController {
         return ResponseEntity.ok(ApiResponse.success("통계 조회 성공", response));
     }
 
-    @PatchMapping("/profile")
-    public ResponseEntity<ApiResponse<MyPageProfileResponse>> updateProfile(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @Valid @RequestBody UpdateProfileRequest request) {
-        MyPageProfileResponse response = myPageService.updateProfile(resolveUserId(userDetails), request);
-        return ResponseEntity.ok(ApiResponse.success("프로필 수정 성공", response));
-    }
-
     @GetMapping("/records")
     public ResponseEntity<ApiResponse<List<MyPageHikingRecordResponse>>> getHikingRecords(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -58,15 +47,7 @@ public class MyPageController {
         return ResponseEntity.ok(ApiResponse.success("등산 기록 조회 성공", response));
     }
 
-    @PatchMapping("/password")
-    public ResponseEntity<ApiResponse<Void>> changePassword(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @Valid @RequestBody ChangePasswordRequest request) {
-        myPageService.changePassword(resolveUserId(userDetails), request);
-        return ResponseEntity.ok(ApiResponse.success("비밀번호 변경 성공", null));
-    }
-
-    // [윤종민] 프로필 이미지 파일 업로드 - multipart/form-data, key명 file
+    //  프로필 이미지 파일 업로드 - multipart/form-data, key명 file
     @PostMapping(value = "/profile-image", consumes = "multipart/form-data")
     public ResponseEntity<ApiResponse<String>> uploadProfileImage(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -75,7 +56,7 @@ public class MyPageController {
         return ResponseEntity.ok(ApiResponse.success("프로필 이미지 업로드 성공", imageUrl));
     }
 
-    // [윤종민] 프로필 이미지 삭제 - 파일 삭제 + DB null 처리
+    //  프로필 이미지 삭제 - 파일 삭제 + DB null 처리
     @DeleteMapping("/profile-image")
     public ResponseEntity<ApiResponse<Void>> deleteProfileImage(
             @AuthenticationPrincipal CustomUserDetails userDetails) {

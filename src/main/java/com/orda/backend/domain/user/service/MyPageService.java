@@ -3,8 +3,6 @@ package com.orda.backend.domain.user.service;
 import com.orda.backend.domain.hiking.entity.HikingRecord;
 import com.orda.backend.domain.hiking.repository.HikingRecordRepository;
 import com.orda.backend.domain.stats.repository.UserStatsRepository;
-import com.orda.backend.domain.user.dto.request.ChangePasswordRequest;
-import com.orda.backend.domain.user.dto.request.UpdateProfileRequest;
 import com.orda.backend.domain.user.dto.response.MyPageHikingRecordResponse;
 import com.orda.backend.domain.user.dto.response.MyPageProfileResponse;
 import com.orda.backend.domain.user.dto.response.MyPageStatsResponse;
@@ -12,7 +10,6 @@ import com.orda.backend.domain.user.entity.User;
 import com.orda.backend.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,7 +29,7 @@ public class MyPageService {
     private final UserRepository userRepository;
     private final UserStatsRepository userStatsRepository;
     private final HikingRecordRepository hikingRecordRepository;
-    private final PasswordEncoder passwordEncoder;
+    // [윤종민] PasswordEncoder 제거 — 비밀번호 변경은 settings 도메인으로 이동
 
     //  프로필 이미지 로컬 저장 경로 (application.yml에서 설정)
     @Value("${file.upload-dir}")
@@ -60,21 +57,8 @@ public class MyPageService {
                 .orElse(MyPageStatsResponse.empty());
     }
 
-    @Transactional
-    public MyPageProfileResponse updateProfile(Long userId, UpdateProfileRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다"));
-        if (request.getNickname() != null) {
-            if (userRepository.existsByNickname(request.getNickname())) {
-                throw new IllegalArgumentException("이미 사용 중인 닉네임입니다");
-            }
-            user.updateNickname(request.getNickname());
-        }
-        if (request.getProfileImageUrl() != null) {
-            user.updateProfileImageUrl(request.getProfileImageUrl());
-        }
-        return MyPageProfileResponse.from(user);
-    }
+    // [윤종민] updateProfile 제거 — settings 도메인으로 이동 예정
+    // [윤종민] changePassword 제거 — settings 도메인으로 이동 예정
 
     @Transactional(readOnly = true)
     public List<MyPageHikingRecordResponse> getHikingRecords(Long userId) {
@@ -86,26 +70,13 @@ public class MyPageService {
                 .collect(Collectors.toList());
     }
 
-    @Transactional
-    public void changePassword(Long userId, ChangePasswordRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다"));
-        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
-            throw new IllegalArgumentException("현재 비밀번호가 올바르지 않습니다");
-        }
-        user.updatePassword(passwordEncoder.encode(request.getNewPassword()));
-    }
-
     //  프로필 이미지 파일 업로드 - 로컬 저장 방식
-    // 나중에 S3로 교체 시 saveFile(), deleteExistingImage() 메서드만 수정하면 됨
     @Transactional
     public String uploadProfileImage(Long userId, MultipartFile file) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다"));
 
         validateFile(file);
-
-        // 기존 이미지가 있으면 파일 삭제
         deleteExistingImage(user.getProfileImageUrl());
 
         String fileName = saveFile(file);
