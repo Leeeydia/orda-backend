@@ -4,7 +4,9 @@ import com.orda.backend.domain.user.entity.User;
 import lombok.Builder;
 import lombok.Getter;
 
-// [윤종민] 개인 정보 수정 페이지용 프로필 응답 — 추후 name, phone, birthDate 추가 예정
+import java.time.LocalDate;
+
+//  개인 정보 수정 페이지용 프로필 응답
 @Getter
 @Builder
 public class SettingsProfileResponse {
@@ -12,6 +14,9 @@ public class SettingsProfileResponse {
     private Long userId;
     private String email;
     private String nickname;
+    private String name;            //  팀원 User 엔티티 필드 추가 반영
+    private String phone;           //  팀원 User 엔티티 필드 추가 반영
+    private LocalDate birthDate;    //  팀원 User 엔티티 필드 추가 반영
     private String profileImageUrl;
 
     public static SettingsProfileResponse from(User user) {
@@ -19,6 +24,9 @@ public class SettingsProfileResponse {
                 .userId(user.getUserId())
                 .email(user.getEmail())
                 .nickname(user.getNickname())
+                .name(user.getName())
+                .phone(user.getPhone())
+                .birthDate(user.getBirthDate())
                 .profileImageUrl(user.getProfileImageUrl())
                 .build();
     }

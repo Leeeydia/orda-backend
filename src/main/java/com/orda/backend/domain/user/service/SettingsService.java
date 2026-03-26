@@ -10,7 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// [윤종민] 개인 정보 수정 서비스 — 마이페이지에서 분리
+// 개인 정보 수정 서비스 — 마이페이지에서 분리
 @Service
 @RequiredArgsConstructor
 public class SettingsService {
@@ -25,7 +25,7 @@ public class SettingsService {
         return SettingsProfileResponse.from(user);
     }
 
-    // [윤종민] 프로필 수정 — 추후 name, phone, birthDate 추가 예정
+    // 프로필 수정 — 닉네임, 전화번호만 수정 가능 (이름, 생년월일은 고정)
     @Transactional
     public SettingsProfileResponse updateProfile(Long userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
@@ -38,10 +38,17 @@ public class SettingsService {
             user.updateNickname(request.getNickname());
         }
 
+        if (request.getPhone() != null) {
+            if (userRepository.existsByPhone(request.getPhone())) {
+                throw new IllegalArgumentException("이미 사용 중인 전화번호입니다");
+            }
+            user.updatePhone(request.getPhone());
+        }
+
         return SettingsProfileResponse.from(user);
     }
 
-    // [윤종민] 비밀번호 변경
+    // 비밀번호 변경
     @Transactional
     public void changePassword(Long userId, ChangePasswordRequest request) {
         User user = userRepository.findById(userId)
