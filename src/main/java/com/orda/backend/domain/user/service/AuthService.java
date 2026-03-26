@@ -21,13 +21,15 @@ public class AuthService {
 
     @Transactional
     public void signup(SignupRequest request) {
+        String normalizedPhone = request.getPhone().replaceAll("-", "");
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다");
         }
         if (userRepository.existsByNickname(request.getNickname())) {
             throw new IllegalArgumentException("이미 사용 중인 닉네임입니다");
         }
-        if (userRepository.existsByPhone(request.getPhone())) {
+        if (userRepository.existsByPhone(normalizedPhone)) {
             throw new IllegalArgumentException("이미 사용 중인 전화번호입니다");
         }
         if (request.getPassword().equalsIgnoreCase(request.getEmail())) {
@@ -39,7 +41,7 @@ public class AuthService {
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .nickname(request.getNickname())
                 .name(request.getName())
-                .phone(request.getPhone())
+                .phone(normalizedPhone)
                 .birthDate(request.getBirthDate())
                 .build();
 
