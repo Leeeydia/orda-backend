@@ -14,10 +14,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Value("${file.upload-dir}")
     private String uploadDir;
 
-    //  서버 로컬에 저장된 이미지를 http://localhost:8080/uploads/** 경로로 접근 가능하게 설정
+    // 서버 로컬에 저장된 이미지를 http://localhost:8080/uploads/** 경로로 접근 가능하게 설정
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        Path uploadPath = Paths.get(uploadDir).toAbsolutePath();
+        Path uploadPath = Paths.get(uploadDir).toAbsolutePath().getParent(); // uploads/profile-images → uploads 기준으로
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:" + uploadPath + "/");
     }
