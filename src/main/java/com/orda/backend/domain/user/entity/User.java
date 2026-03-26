@@ -2,6 +2,7 @@ package com.orda.backend.domain.user.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -24,6 +25,15 @@ public class User {
     @Column(nullable = false, length = 50)
     private String nickname;
 
+    @Column(nullable = false, length = 50)
+    private String name;
+
+    @Column(nullable = false, unique = true, length = 20)
+    private String phone;
+
+    @Column(name = "birth_date")
+    private LocalDate birthDate;
+
     @Column(name = "profile_image_url", length = 500)
     private String profileImageUrl;
 
@@ -45,14 +55,30 @@ public class User {
     }
 
     @Builder
-    public User(String email, String passwordHash, String nickname) {
+    public User(String email, String passwordHash, String nickname,
+                String name, String phone, LocalDate birthDate) {
         this.email = email;
         this.passwordHash = passwordHash;
         this.nickname = nickname;
+        this.name = name;
+        this.phone = phone;
+        this.birthDate = birthDate;
     }
 
     public void updateNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    public void updatePhone(String phone) {
+        this.phone = phone;
+    }
+
+    public void updateBirthDate(LocalDate birthDate) {
+        this.birthDate = birthDate;
     }
 
     public void updateProfileImageUrl(String profileImageUrl) {
