@@ -39,10 +39,11 @@ public class SettingsService {
         }
 
         if (request.getPhone() != null) {
-            if (userRepository.existsByPhoneAndUserIdNot(request.getPhone(), userId)) { // 수정: 자기 자신 제외
+            String normalizedPhone = request.getPhone().replaceAll("-", ""); // 추가: 하이픈 제거 후 저장
+            if (userRepository.existsByPhoneAndUserIdNot(normalizedPhone, userId)) { // 수정: 자기 자신 제외
                 throw new IllegalArgumentException("이미 사용 중인 전화번호입니다");
             }
-            user.updatePhone(request.getPhone());
+            user.updatePhone(normalizedPhone); // 수정: 하이픈 제거된 값으로 저장
         }
 
         return SettingsProfileResponse.from(user);
