@@ -32,14 +32,14 @@ public class SettingsService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다"));
 
         if (request.getNickname() != null) {
-            if (userRepository.existsByNickname(request.getNickname())) {
+            if (userRepository.existsByNicknameAndUserIdNot(request.getNickname(), userId)) { // 수정: 자기 자신 제외
                 throw new IllegalArgumentException("이미 사용 중인 닉네임입니다");
             }
             user.updateNickname(request.getNickname());
         }
 
         if (request.getPhone() != null) {
-            if (userRepository.existsByPhone(request.getPhone())) {
+            if (userRepository.existsByPhoneAndUserIdNot(request.getPhone(), userId)) { // 수정: 자기 자신 제외
                 throw new IllegalArgumentException("이미 사용 중인 전화번호입니다");
             }
             user.updatePhone(request.getPhone());

@@ -37,7 +37,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/summit/**").permitAll()  // TODO: feat/auth 완료 후 제거
                         .requestMatchers("/api/stats/**").permitAll()   // TODO: feat/auth 완료 후 제거
                         .requestMatchers("/api/mypage/**").permitAll()  // TODO: feat/auth 완료 후 제거
-                        .requestMatchers("/uploads/**").permitAll()     //  프로필 이미지 접근 허용
+                        .requestMatchers("/api/settings/**").permitAll() // TODO: feat/auth 완료 후 제거 // 추가
+                        .requestMatchers("/uploads/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(

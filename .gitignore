@@ -44,6 +44,9 @@ Thumbs.db
 /src/main/resources/application-secret.yml
 /src/main/resources/application-local.yml
 
+### Uploads ###
+uploads/ # 추가: 프로필 이미지 등 업로드 파일 제외
+
 ### Python ###
 /python/venv/
 /python/__pycache__/

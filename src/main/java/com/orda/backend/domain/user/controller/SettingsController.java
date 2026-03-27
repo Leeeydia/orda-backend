@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-// [윤종민] 개인 정보 수정 API — 마이페이지에서 분리
+// 개인 정보 수정 API — 마이페이지에서 분리
 @RestController
 @RequestMapping("/api/settings")
 @RequiredArgsConstructor
@@ -20,12 +20,12 @@ public class SettingsController {
 
     private final SettingsService settingsService;
 
-    // [윤종민] TODO: 프론트 로그인 구현 완료 후 임시 userId 제거
+    // TODO: 프론트 로그인 구현 완료 후 임시 userId 제거
     private Long resolveUserId(CustomUserDetails userDetails) {
         return userDetails != null ? userDetails.getUserId() : 1L;
     }
 
-    // [윤종민] 수정 페이지용 프로필 조회
+    // 수정 페이지용 프로필 조회
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<SettingsProfileResponse>> getProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -33,7 +33,7 @@ public class SettingsController {
         return ResponseEntity.ok(ApiResponse.success("프로필 조회 성공", response));
     }
 
-    // [윤종민] 프로필 수정 (닉네임 — 추후 name, phone, birthDate 추가 예정)
+    // 프로필 수정 — 닉네임, 전화번호 수정 가능 (이름, 생년월일은 고정) // 수정: 실제 구현 범위로 업데이트
     @PatchMapping("/profile")
     public ResponseEntity<ApiResponse<SettingsProfileResponse>> updateProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -42,7 +42,7 @@ public class SettingsController {
         return ResponseEntity.ok(ApiResponse.success("프로필 수정 성공", response));
     }
 
-    // [윤종민] 비밀번호 변경
+    // 비밀번호 변경
     @PatchMapping("/password")
     public ResponseEntity<ApiResponse<Void>> changePassword(
             @AuthenticationPrincipal CustomUserDetails userDetails,
