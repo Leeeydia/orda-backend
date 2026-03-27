@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 
+// 비밀번호 변경 요청
 @Getter
 public class ChangePasswordRequest {
 
