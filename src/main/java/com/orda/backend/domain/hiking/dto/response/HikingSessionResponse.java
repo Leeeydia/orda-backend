@@ -14,6 +14,10 @@ public class HikingSessionResponse {
     private String status;
     private LocalDateTime startedAt;
     private LocalDateTime endedAt;
+    private Double totalDistanceM;
+    private Double totalElevationGainM;
+    private Double totalElevationLossM;
+    private Integer totalDurationSec;
 
     public static HikingSessionResponse from(HikingRecord record) {
         return HikingSessionResponse.builder()
@@ -22,6 +26,10 @@ public class HikingSessionResponse {
                 .status(record.getStatus().name())
                 .startedAt(record.getStartedAt())
                 .endedAt(record.getEndedAt())
+                .totalDistanceM(record.getTotalDistanceM())
+                .totalElevationGainM(record.getTotalElevationGainM())
+                .totalElevationLossM(record.getTotalElevationLossM())
+                .totalDurationSec(record.getTotalDurationSec())
                 .build();
     }
 }
