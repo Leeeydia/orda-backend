@@ -29,7 +29,6 @@ public class MyPageService {
     private final UserRepository userRepository;
     private final UserStatsRepository userStatsRepository;
     private final HikingRecordRepository hikingRecordRepository;
-    // [윤종민] PasswordEncoder 제거 — 비밀번호 변경은 settings 도메인으로 이동
 
     //  프로필 이미지 로컬 저장 경로 (application.yml에서 설정)
     @Value("${file.upload-dir}")
@@ -56,9 +55,6 @@ public class MyPageService {
                 .map(MyPageStatsResponse::from)
                 .orElse(MyPageStatsResponse.empty());
     }
-
-    // [윤종민] updateProfile 제거 — settings 도메인으로 이동 예정
-    // [윤종민] changePassword 제거 — settings 도메인으로 이동 예정
 
     @Transactional(readOnly = true)
     public List<MyPageHikingRecordResponse> getHikingRecords(Long userId) {
