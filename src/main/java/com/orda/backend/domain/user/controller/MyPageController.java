@@ -21,29 +21,24 @@ public class MyPageController {
 
     private final MyPageService myPageService;
 
-    // TODO: 프론트 로그인 구현 완료 후 임시 userId 제거
-    private Long resolveUserId(CustomUserDetails userDetails) {
-        return userDetails != null ? userDetails.getUserId() : 1L;
-    }
-
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<MyPageProfileResponse>> getProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        MyPageProfileResponse response = myPageService.getProfile(resolveUserId(userDetails));
+        MyPageProfileResponse response = myPageService.getProfile(userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success("프로필 조회 성공", response));
     }
 
     @GetMapping("/stats")
     public ResponseEntity<ApiResponse<MyPageStatsResponse>> getStats(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        MyPageStatsResponse response = myPageService.getStats(resolveUserId(userDetails));
+        MyPageStatsResponse response = myPageService.getStats(userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success("통계 조회 성공", response));
     }
 
     @GetMapping("/records")
     public ResponseEntity<ApiResponse<List<MyPageHikingRecordResponse>>> getHikingRecords(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        List<MyPageHikingRecordResponse> response = myPageService.getHikingRecords(resolveUserId(userDetails));
+        List<MyPageHikingRecordResponse> response = myPageService.getHikingRecords(userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success("등산 기록 조회 성공", response));
     }
 
@@ -52,7 +47,7 @@ public class MyPageController {
     public ResponseEntity<ApiResponse<String>> uploadProfileImage(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestPart("file") MultipartFile file) {
-        String imageUrl = myPageService.uploadProfileImage(resolveUserId(userDetails), file);
+        String imageUrl = myPageService.uploadProfileImage(userDetails.getUserId(), file);
         return ResponseEntity.ok(ApiResponse.success("프로필 이미지 업로드 성공", imageUrl));
     }
 
@@ -60,7 +55,7 @@ public class MyPageController {
     @DeleteMapping("/profile-image")
     public ResponseEntity<ApiResponse<Void>> deleteProfileImage(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        myPageService.deleteProfileImage(resolveUserId(userDetails));
+        myPageService.deleteProfileImage(userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success("프로필 이미지 삭제 성공", null));
     }
 }
