@@ -20,25 +20,20 @@ public class SettingsController {
 
     private final SettingsService settingsService;
 
-    // TODO: 프론트 로그인 구현 완료 후 임시 userId 제거
-    private Long resolveUserId(CustomUserDetails userDetails) {
-        return userDetails != null ? userDetails.getUserId() : 1L;
-    }
-
     // 수정 페이지용 프로필 조회
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<SettingsProfileResponse>> getProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        SettingsProfileResponse response = settingsService.getProfile(resolveUserId(userDetails));
+        SettingsProfileResponse response = settingsService.getProfile(userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success("프로필 조회 성공", response));
     }
 
-    // 프로필 수정 — 닉네임, 전화번호 수정 가능 (이름, 생년월일은 고정) // 수정: 실제 구현 범위로 업데이트
+    // 프로필 수정 — 닉네임, 전화번호 수정 가능 (이름, 생년월일은 고정)
     @PatchMapping("/profile")
     public ResponseEntity<ApiResponse<SettingsProfileResponse>> updateProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody UpdateProfileRequest request) {
-        SettingsProfileResponse response = settingsService.updateProfile(resolveUserId(userDetails), request);
+        SettingsProfileResponse response = settingsService.updateProfile(userDetails.getUserId(), request);
         return ResponseEntity.ok(ApiResponse.success("프로필 수정 성공", response));
     }
 
@@ -47,7 +42,7 @@ public class SettingsController {
     public ResponseEntity<ApiResponse<Void>> changePassword(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody ChangePasswordRequest request) {
-        settingsService.changePassword(resolveUserId(userDetails), request);
+        settingsService.changePassword(userDetails.getUserId(), request);
         return ResponseEntity.ok(ApiResponse.success("비밀번호 변경 성공", null));
     }
 }
