@@ -32,18 +32,24 @@ public class SummitService {
         boolean verified = nearest.getDistance_m() <= nearest.getRadius_m();
 
         if (verified) {
-            Point userPoint = geometryFactory.createPoint(
-                    new Coordinate(request.getLongitude(), request.getLatitude())
-            );
+            // 같은 세션에서 같은 정상 재인증 시 중복 저장 방지
+            boolean alreadyVerified = summitVerificationRepository
+                    .existsBySessionIdAndSummitId(request.getSessionId(), nearest.getSummit_id());
 
-            SummitVerification verification = SummitVerification.builder()
-                    .sessionId(request.getSessionId())
-                    .summitId(nearest.getSummit_id())
-                    .distanceToSummitM(nearest.getDistance_m())
-                    .geom(userPoint)
-                    .build();
+            if (!alreadyVerified) {
+                Point userPoint = geometryFactory.createPoint(
+                        new Coordinate(request.getLongitude(), request.getLatitude())
+                );
 
-            summitVerificationRepository.save(verification);
+                SummitVerification verification = SummitVerification.builder()
+                        .sessionId(request.getSessionId())
+                        .summitId(nearest.getSummit_id())
+                        .distanceToSummitM(nearest.getDistance_m())
+                        .geom(userPoint)
+                        .build();
+
+                summitVerificationRepository.save(verification);
+            }
         }
 
         return SummitVerifyResponse.builder()
