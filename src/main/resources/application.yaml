@@ -34,4 +34,8 @@ jwt:
 # 프로필 이미지 로컬 저장 경로 설정 추가
 file:
   upload-dir: uploads/profile-images
-  static-resource-dir: uploads  # 정적 리소스 루트 경로 — getParent() 제거 대응
+  static-resource-dir: uploads
+
+# DEM 파일 경로 설정
+dem:
+  file-path: src/main/resources/dem/dem.tif
