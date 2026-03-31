@@ -148,24 +148,48 @@ CREATE INDEX idx_hiking_sessions_started_at ON hiking_sessions (started_at DESC)
 -- 등산 중 위치 좌표를 수집하여 경로를 저장
 -- 3D 리플레이(No.11 경로 재생, No.12 고도 변화 시각화)의 원본 데이터
 -- 담당: A - 이윤지
+--
+-- geom: snapped 좌표 기준 (등산로에 스냅된 공식 위치)
+-- canonical_elevation_m: DEM 기준 공식 고도 (프로파일/상승고도 계산에 사용)
+-- raw_*: 기기 GPS 원본값 (참고용)
 -- ──────────────────────────────────────────────
 CREATE TABLE gps_tracks
 (
-    track_id     BIGSERIAL PRIMARY KEY,
-    session_id   BIGINT    NOT NULL REFERENCES hiking_sessions (session_id) ON DELETE CASCADE,
-    sequence_num INTEGER   NOT NULL,
-    elevation_m  DOUBLE PRECISION,
-    accuracy_m   DOUBLE PRECISION,
-    recorded_at  TIMESTAMP NOT NULL DEFAULT now(),
-    geom         GEOMETRY(Point, 4326) NOT NULL,
+    track_id              BIGSERIAL PRIMARY KEY,
+    session_id            BIGINT    NOT NULL REFERENCES hiking_sessions (session_id) ON DELETE CASCADE,
+    sequence_num          INTEGER   NOT NULL,
+
+    -- raw GPS 원본 (참고용, 공식값으로 사용하지 않음)
+    raw_latitude          DOUBLE PRECISION NOT NULL,
+    raw_longitude         DOUBLE PRECISION NOT NULL,
+    raw_elevation_m       DOUBLE PRECISION,
+
+    -- canonical 기준 (공식값)
+    snapped_latitude      DOUBLE PRECISION,
+    snapped_longitude     DOUBLE PRECISION,
+    canonical_elevation_m DOUBLE PRECISION,
+    elevation_source      VARCHAR(20) NOT NULL DEFAULT 'none'
+        CHECK (elevation_source IN ('dem', 'gps_fallback', 'none')),
+
+    accuracy_m            DOUBLE PRECISION,
+    recorded_at           TIMESTAMP NOT NULL DEFAULT now(),
+
+    -- geom: snapped 좌표 기준으로 저장 (지도 표시 / 공간 연산 기준)
+    geom                  GEOMETRY(Point, 4326) NOT NULL,
 
     UNIQUE (session_id, sequence_num)
 );
 
 COMMENT ON TABLE  gps_tracks IS 'GPS 트랙 포인트 (기능정의서 No.4 실시간 GPS 수집)';
 COMMENT ON COLUMN gps_tracks.sequence_num IS '세션 내 포인트 순서 (1부터 시작)';
-COMMENT ON COLUMN gps_tracks.geom IS 'WGS84 좌표 (EPSG:4326), [lng, lat] 순서';
-COMMENT ON COLUMN gps_tracks.elevation_m IS '고도 (미터) - 기기 GPS 값, DEM 보정은 별도 처리';
+COMMENT ON COLUMN gps_tracks.raw_latitude IS '기기 GPS 원본 위도 (참고용)';
+COMMENT ON COLUMN gps_tracks.raw_longitude IS '기기 GPS 원본 경도 (참고용)';
+COMMENT ON COLUMN gps_tracks.raw_elevation_m IS '기기 GPS 원본 고도 (참고용, null 가능)';
+COMMENT ON COLUMN gps_tracks.snapped_latitude IS '등산로 스냅 위도 (공식 위치)';
+COMMENT ON COLUMN gps_tracks.snapped_longitude IS '등산로 스냅 경도 (공식 위치)';
+COMMENT ON COLUMN gps_tracks.canonical_elevation_m IS 'DEM 기준 공식 고도 - 프로파일/상승고도 계산 기준';
+COMMENT ON COLUMN gps_tracks.elevation_source IS 'dem: DEM 샘플링 성공 / gps_fallback: GPS 원고도 대체 / none: 고도 없음';
+COMMENT ON COLUMN gps_tracks.geom IS 'snapped 좌표 기준 (EPSG:4326), [lng, lat] 순서';
 COMMENT ON COLUMN gps_tracks.accuracy_m IS 'GPS 정확도 (미터) - 수평 오차 반경';
 
 CREATE INDEX idx_gps_tracks_session_id ON gps_tracks (session_id, sequence_num);
@@ -242,7 +266,7 @@ CREATE INDEX idx_user_stats_user_id ON user_stats (user_id);
 -- No.9  에러 처리 및 로깅    → (코드 구조, DB 해당 없음)
 -- No.10 지도 라이브러리 설정  → (Mapbox GL JS, DB 해당 없음)
 -- No.11 3D 등산 리플레이     → hiking_sessions + gps_tracks 재사용
--- No.12 고도 변화 시각화     → gps_tracks.elevation_m 활용
+-- No.12 고도 변화 시각화     → gps_tracks.canonical_elevation_m 활용
 -- No.13 내 기록 조회         → hiking_sessions + summit_verifications JOIN
 -- No.14 프로필/통계 조회     → user_stats
 -- No.15 Trail Difficulty    → trail_edges.difficulty
