@@ -2,7 +2,9 @@ package com.orda.backend.domain.summit.service;
 
 import com.orda.backend.domain.summit.dto.request.SummitVerifyRequest;
 import com.orda.backend.domain.summit.dto.response.SummitVerifyResponse;
+import com.orda.backend.domain.summit.entity.SummitPoint;
 import com.orda.backend.domain.summit.entity.SummitVerification;
+import com.orda.backend.domain.summit.model.SessionVerifiedSummit;
 import com.orda.backend.domain.summit.repository.NearestSummitResult;
 import com.orda.backend.domain.summit.repository.SummitPointRepository;
 import com.orda.backend.domain.summit.repository.SummitVerificationRepository;
@@ -13,6 +15,8 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -32,7 +36,6 @@ public class SummitService {
         boolean verified = nearest.getDistance_m() <= nearest.getRadius_m();
 
         if (verified) {
-            // 같은 세션에서 같은 정상 재인증 시 중복 저장 방지
             boolean alreadyVerified = summitVerificationRepository
                     .existsBySessionIdAndSummitId(request.getSessionId(), nearest.getSummit_id());
 
@@ -57,6 +60,30 @@ public class SummitService {
                 .summitId(nearest.getSummit_id())
                 .summitName(nearest.getName())
                 .distanceM(nearest.getDistance_m())
+                .build();
+    }
+
+    public List<SessionVerifiedSummit> getVerifiedSummitsBySessionId(Long sessionId) {
+        return summitVerificationRepository.findAllBySessionIdOrderByVerifiedAtAsc(sessionId)
+                .stream()
+                .map(this::toSessionVerifiedSummit)
+                .toList();
+    }
+
+    private SessionVerifiedSummit toSessionVerifiedSummit(SummitVerification verification) {
+        SummitPoint summitPoint = summitPointRepository.findById(verification.getSummitId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "정상 정보를 찾을 수 없습니다. summitId=" + verification.getSummitId()
+                ));
+
+        Point summitGeom = summitPoint.getGeom();
+
+        return SessionVerifiedSummit.builder()
+                .summitId(summitPoint.getId())
+                .summitName(summitPoint.getName())
+                .latitude(summitGeom.getY())
+                .longitude(summitGeom.getX())
+                .verifiedAt(verification.getVerifiedAt())
                 .build();
     }
 }

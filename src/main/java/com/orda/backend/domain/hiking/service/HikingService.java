@@ -12,6 +12,7 @@ import com.orda.backend.domain.hiking.dto.response.HikingStartResponse;
 import com.orda.backend.domain.hiking.dto.response.ReplayPointResponse;
 import com.orda.backend.domain.hiking.dto.response.ReplayResponse;
 import com.orda.backend.domain.hiking.dto.response.ReplaySummaryResponse;
+import com.orda.backend.domain.hiking.dto.response.VerifiedSummitItem;
 import com.orda.backend.domain.hiking.entity.GpsTrack;
 import com.orda.backend.domain.hiking.entity.HikingRecord;
 import com.orda.backend.domain.hiking.model.EnrichedTrackPoint;
@@ -19,6 +20,8 @@ import com.orda.backend.domain.hiking.repository.GpsTrackRepository;
 import com.orda.backend.domain.hiking.repository.HikingRecordRepository;
 import com.orda.backend.domain.stats.entity.UserStats;
 import com.orda.backend.domain.stats.repository.UserStatsRepository;
+import com.orda.backend.domain.summit.model.SessionVerifiedSummit;
+import com.orda.backend.domain.summit.service.SummitService;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -26,7 +29,9 @@ import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +44,7 @@ public class HikingService {
     private final HikingRecordRepository hikingRecordRepository;
     private final GpsTrackRepository gpsTrackRepository;
     private final UserStatsRepository userStatsRepository;
+    private final SummitService summitService;
 
     private final ElevationProfileBuilder elevationProfileBuilder;
     private final EnrichedTrackPointBuilder enrichedTrackPointBuilder;
@@ -91,7 +97,10 @@ public class HikingService {
     public HikingSessionResponse getSession(Long sessionId) {
         HikingRecord record = hikingRecordRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + sessionId));
-        return HikingSessionResponse.from(record);
+
+        List<VerifiedSummitItem> verifiedSummits = buildVerifiedSummits(record);
+
+        return HikingSessionResponse.from(record, verifiedSummits);
     }
 
     @Transactional
@@ -177,6 +186,38 @@ public class HikingService {
                 .toList();
 
         return GeoJsonFeatureCollectionResponse.of(features);
+    }
+
+    private List<VerifiedSummitItem> buildVerifiedSummits(HikingRecord record) {
+        List<SessionVerifiedSummit> verifiedSummits = summitService.getVerifiedSummitsBySessionId(record.getId());
+
+        if (verifiedSummits.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return verifiedSummits.stream()
+                .map(summit -> toVerifiedSummitItem(summit, record.getStartedAt()))
+                .toList();
+    }
+
+    private VerifiedSummitItem toVerifiedSummitItem(SessionVerifiedSummit summit, LocalDateTime sessionStartedAt) {
+        long verifiedElapsedSec = 0L;
+
+        if (sessionStartedAt != null && summit.getVerifiedAt() != null) {
+            verifiedElapsedSec = Math.max(
+                    0L,
+                    Duration.between(sessionStartedAt, summit.getVerifiedAt()).toSeconds()
+            );
+        }
+
+        return VerifiedSummitItem.builder()
+                .summitId(summit.getSummitId())
+                .summitName(summit.getSummitName())
+                .latitude(summit.getLatitude())
+                .longitude(summit.getLongitude())
+                .verifiedAt(summit.getVerifiedAt())
+                .verifiedElapsedSec(verifiedElapsedSec)
+                .build();
     }
 
     private void validateReplayTracks(List<GpsTrack> tracks, Long sessionId) {
