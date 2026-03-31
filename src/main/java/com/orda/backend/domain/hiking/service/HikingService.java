@@ -105,22 +105,29 @@ public class HikingService {
 
     @Transactional
     public void saveGpsTrack(Long sessionId, GpsTrackRequest request) {
-        HikingRecord record = hikingRecordRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("세션을 찾을 수 없습니다: " + sessionId));
+        // 세션 존재 확인
+        if (!hikingRecordRepository.existsById(sessionId)) {
+            throw new IllegalArgumentException("세션을 찾을 수 없습니다: " + sessionId);
+        }
 
         int nextSeq = gpsTrackRepository.findMaxSequenceNum(sessionId) + 1;
 
-        org.locationtech.jts.geom.Point point = geometryFactory.createPoint(
+        // geom은 raw 좌표 기준으로 생성 (GeoJSON 규칙: [경도, 위도])
+        org.locationtech.jts.geom.Point geom = geometryFactory.createPoint(
                 new Coordinate(request.getLongitude(), request.getLatitude())
         );
 
         GpsTrack track = GpsTrack.builder()
-                .hikingRecord(record)
+                .sessionId(sessionId)
                 .sequenceNum(nextSeq)
-                .elevationM(request.getElevationM())
+                .rawLatitude(request.getLatitude())
+                .rawLongitude(request.getLongitude())
+                .rawElevationM(request.getElevationM())
                 .accuracyM(request.getAccuracyM())
                 .recordedAt(LocalDateTime.now())
-                .geom(point)
+                .geom(geom)
+                // canonical 필드는 GpsTrackProcessor에서 채움 (4단계)
+                // elevationSource 기본값은 GpsTrack 생성자에서 none으로 처리
                 .build();
 
         gpsTrackRepository.save(track);
@@ -177,7 +184,8 @@ public class HikingService {
                     Map<String, Object> properties = new HashMap<>();
                     properties.put("trackId", track.getTrackId());
                     properties.put("sequenceNum", track.getSequenceNum());
-                    properties.put("elevationM", track.getElevationM());
+                    properties.put("canonicalElevationM", track.getCanonicalElevationM()); // 변경
+                    properties.put("elevationSource", track.getElevationSource());          // 추가
                     properties.put("accuracyM", track.getAccuracyM());
                     properties.put("recordedAt", track.getRecordedAt().toString());
 
