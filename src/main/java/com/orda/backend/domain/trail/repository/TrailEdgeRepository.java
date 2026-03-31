@@ -1,5 +1,6 @@
 package com.orda.backend.domain.trail.repository;
 
+import com.orda.backend.common.projection.SnappedPointProjection;
 import com.orda.backend.domain.trail.entity.TrailEdge;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -7,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface TrailEdgeRepository extends JpaRepository<TrailEdge, String> {
@@ -37,4 +39,28 @@ public interface TrailEdgeRepository extends JpaRepository<TrailEdge, String> {
           AND difficulty IS NOT NULL
         """, nativeQuery = true)
     List<Object[]> findEdgesWithGeomBySummitId(@Param("summitId") String summitId);
+
+    // ── GPS 스냅용 ────────────────────────────────────────────
+    @Query(value = """
+            SELECT
+                ST_X(ST_ClosestPoint(e.geom, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326))) AS snappedLon,
+                ST_Y(ST_ClosestPoint(e.geom, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326))) AS snappedLat,
+                ST_Distance(
+                    e.geom::geography,
+                    ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography
+                ) AS distanceM
+            FROM trail_edges e
+            WHERE ST_DWithin(
+                e.geom::geography,
+                ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
+                :radiusM
+            )
+            ORDER BY distanceM
+            LIMIT 1
+            """, nativeQuery = true)
+    Optional<SnappedPointProjection> findClosestPoint(
+            @Param("lon") double lon,
+            @Param("lat") double lat,
+            @Param("radiusM") double radiusM
+    );
 }
