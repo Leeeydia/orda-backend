@@ -15,6 +15,7 @@ import com.orda.backend.domain.hiking.dto.response.ReplaySummaryResponse;
 import com.orda.backend.domain.hiking.dto.response.VerifiedSummitItem;
 import com.orda.backend.domain.hiking.entity.GpsTrack;
 import com.orda.backend.domain.hiking.entity.HikingRecord;
+import com.orda.backend.domain.hiking.model.CanonicalGpsPoint;
 import com.orda.backend.domain.hiking.model.EnrichedTrackPoint;
 import com.orda.backend.domain.hiking.repository.GpsTrackRepository;
 import com.orda.backend.domain.hiking.repository.HikingRecordRepository;
@@ -50,6 +51,7 @@ public class HikingService {
     private final EnrichedTrackPointBuilder enrichedTrackPointBuilder;
     private final TrackStatsCalculator trackStatsCalculator;
     private final ReplayCalculator replayCalculator;
+    private final GpsTrackProcessor gpsTrackProcessor;
 
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
@@ -105,22 +107,37 @@ public class HikingService {
 
     @Transactional
     public void saveGpsTrack(Long sessionId, GpsTrackRequest request) {
-        HikingRecord record = hikingRecordRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("세션을 찾을 수 없습니다: " + sessionId));
+        if (!hikingRecordRepository.existsById(sessionId)) {
+            throw new IllegalArgumentException("세션을 찾을 수 없습니다: " + sessionId);
+        }
 
         int nextSeq = gpsTrackRepository.findMaxSequenceNum(sessionId) + 1;
 
-        org.locationtech.jts.geom.Point point = geometryFactory.createPoint(
-                new Coordinate(request.getLongitude(), request.getLatitude())
+        // canonical 변환 먼저 수행
+        CanonicalGpsPoint canonical = gpsTrackProcessor.process(
+                request.getLatitude(),
+                request.getLongitude(),
+                request.getElevationM()
+        );
+
+        // geom은 canonical 처리 이후 snapped 좌표 기준으로 생성
+        org.locationtech.jts.geom.Point geom = geometryFactory.createPoint(
+                new Coordinate(canonical.getSnappedLongitude(), canonical.getSnappedLatitude())
         );
 
         GpsTrack track = GpsTrack.builder()
-                .hikingRecord(record)
+                .sessionId(sessionId)
                 .sequenceNum(nextSeq)
-                .elevationM(request.getElevationM())
+                .rawLatitude(request.getLatitude())
+                .rawLongitude(request.getLongitude())
+                .rawElevationM(request.getElevationM())
+                .snappedLatitude(canonical.getSnappedLatitude())
+                .snappedLongitude(canonical.getSnappedLongitude())
+                .canonicalElevationM(canonical.getCanonicalElevationM())
+                .elevationSource(canonical.getElevationSource())
                 .accuracyM(request.getAccuracyM())
                 .recordedAt(LocalDateTime.now())
-                .geom(point)
+                .geom(geom)
                 .build();
 
         gpsTrackRepository.save(track);
@@ -177,7 +194,8 @@ public class HikingService {
                     Map<String, Object> properties = new HashMap<>();
                     properties.put("trackId", track.getTrackId());
                     properties.put("sequenceNum", track.getSequenceNum());
-                    properties.put("elevationM", track.getElevationM());
+                    properties.put("canonicalElevationM", track.getCanonicalElevationM());
+                    properties.put("elevationSource", track.getElevationSource());
                     properties.put("accuracyM", track.getAccuracyM());
                     properties.put("recordedAt", track.getRecordedAt().toString());
 

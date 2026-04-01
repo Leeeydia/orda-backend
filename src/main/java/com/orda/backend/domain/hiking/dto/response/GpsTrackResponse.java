@@ -21,7 +21,7 @@ public class GpsTrackResponse {
         this.sequenceNum = track.getSequenceNum();
         this.latitude = track.getGeom().getY();
         this.longitude = track.getGeom().getX();
-        this.elevationM = track.getElevationM();
+        this.elevationM = track.getCanonicalElevationM(); // 수정
         this.accuracyM = track.getAccuracyM();
         this.recordedAt = track.getRecordedAt();
     }
