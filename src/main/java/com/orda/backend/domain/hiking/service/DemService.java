@@ -6,13 +6,21 @@ import mil.nga.tiff.FileDirectory;
 import mil.nga.tiff.Rasters;
 import mil.nga.tiff.TIFFImage;
 import mil.nga.tiff.TiffReader;
-import mil.nga.tiff.util.TiffConstants;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.util.List;
 
+/**
+ * GeoTIFF DEM 파일 기반 고도 샘플링 서비스
+ *
+ * 현재 구현 가정:
+ * - EPSG:4326 (WGS84) 좌표계 기준
+ * - ModelTiepointTag / ModelPixelScaleTag 메타데이터 필수
+ * - NASADEM 한국 파일(korea_dem.tif) 기준으로 검증됨
+ * - 경계 픽셀에서 Math.round 기반 인덱싱 사용 (소수점 오차 가능)
+ */
 @Slf4j
 @Service
 public class DemService {
@@ -31,11 +39,18 @@ public class DemService {
 
     @PostConstruct
     public void init() {
+        // 빈 경로면 fallback 모드로 동작
+        if (demFilePath == null || demFilePath.isBlank()) {
+            log.info("DEM 파일 경로가 설정되지 않았습니다. elevation_source=gps_fallback으로 동작합니다.");
+            return;
+        }
+
         File demFile = new File(demFilePath);
         if (!demFile.exists()) {
             log.warn("DEM 파일을 찾을 수 없습니다. 경로={}", demFilePath);
             return;
         }
+
         try {
             TIFFImage tiffImage = TiffReader.readTiff(demFile);
             FileDirectory directory = tiffImage.getFileDirectory();
@@ -66,7 +81,7 @@ public class DemService {
      *
      * @param lat 위도 (snapped)
      * @param lon 경도 (snapped)
-     * @return 고도(미터). DEM 범위 밖이거나 nodata면 null 반환
+     * @return 고도(미터). DEM 미로드, 범위 밖, nodata면 null 반환 → gps_fallback 또는 none으로 처리됨
      */
     public Double getElevation(double lat, double lon) {
         if (!loaded) {
