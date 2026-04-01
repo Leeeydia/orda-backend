@@ -36,6 +36,6 @@ file:
   upload-dir: uploads/profile-images
   static-resource-dir: uploads
 
-# DEM 파일 경로 설정 (운영 시 실제 경로로 변경)
+# DEM 파일 경로 설정 (운영 시 환경변수 DEM_FILE_PATH로 설정, 개발 환경에서는 빈값 유지)
 dem:
-  file-path: C:/Users/yunji/IdeaProjects/ORDA/backend/python/data/raw/dem/nasadem/korea_dem.tif
+  file-path: ${DEM_FILE_PATH:}
