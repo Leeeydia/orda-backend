@@ -12,6 +12,6 @@ public class UpdateProfileRequest {
     @Pattern(regexp = "^[a-zA-Z0-9가-힣]+$", message = "닉네임은 한글, 영문, 숫자만 사용 가능합니다")
     private String nickname;
 
-    @Pattern(regexp = "^01[0-9]-?\\d{3,4}-?\\d{4}$", message = "전화번호 형식이 올바르지 않습니다") // 하이픈 선택적 허용
+    @Pattern(regexp = "^010\\d{8}$", message = "전화번호 형식이 올바르지 않습니다 (예: 01012345678)")
     private String phone;
 }
