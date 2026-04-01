@@ -113,14 +113,16 @@ public class HikingService {
 
         int nextSeq = gpsTrackRepository.findMaxSequenceNum(sessionId) + 1;
 
-        org.locationtech.jts.geom.Point geom = geometryFactory.createPoint(
-                new Coordinate(request.getLongitude(), request.getLatitude())
-        );
-
+        // canonical 변환 먼저 수행
         CanonicalGpsPoint canonical = gpsTrackProcessor.process(
                 request.getLatitude(),
                 request.getLongitude(),
                 request.getElevationM()
+        );
+
+        // geom은 canonical 처리 이후 snapped 좌표 기준으로 생성
+        org.locationtech.jts.geom.Point geom = geometryFactory.createPoint(
+                new Coordinate(canonical.getSnappedLongitude(), canonical.getSnappedLatitude())
         );
 
         GpsTrack track = GpsTrack.builder()
