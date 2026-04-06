@@ -1,6 +1,7 @@
 package com.orda.backend.domain.user.controller;
 
 import com.orda.backend.common.response.ApiResponse;
+import com.orda.backend.domain.user.dto.request.KakaoLoginRequest;
 import com.orda.backend.domain.user.dto.request.LoginRequest;
 import com.orda.backend.domain.user.dto.request.SignupRequest;
 import com.orda.backend.domain.user.dto.response.LoginResponse;
@@ -26,6 +27,14 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
+        return ResponseEntity.ok(ApiResponse.success("로그인 성공", response));
+    }
+
+    @PostMapping("/kakao")
+    public ResponseEntity<ApiResponse<LoginResponse>> kakaoLogin(
+            @RequestBody KakaoLoginRequest request
+    ) {
+        LoginResponse response = authService.kakaoLogin(request.code());
         return ResponseEntity.ok(ApiResponse.success("로그인 성공", response));
     }
 }
