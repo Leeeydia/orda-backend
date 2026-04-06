@@ -7,9 +7,16 @@ import com.orda.backend.domain.user.entity.User;
 import com.orda.backend.domain.user.repository.UserRepository;
 import com.orda.backend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -18,6 +25,14 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+
+    @Value("${kakao.client-id}")
+    private String kakaoClientId;
+
+    @Value("${kakao.redirect-uri}")
+    private String kakaoRedirectUri;
+
+    private final WebClient webClient = WebClient.create();
 
     @Transactional
     public void signup(SignupRequest request) {
@@ -58,5 +73,64 @@ public class AuthService {
         String token = jwtTokenProvider.generateAccessToken(user.getUserId(), user.getEmail());
 
         return new LoginResponse(token, user.getUserId(), user.getNickname());
+    }
+
+    @Transactional
+    public LoginResponse kakaoLogin(String code) {
+        String kakaoAccessToken = getKakaoToken(code);
+        String email = getKakaoUserEmail(kakaoAccessToken);
+
+        User user = userRepository.findByEmail(email)
+                .orElseGet(() -> userRepository.save(
+                        User.builder()
+                                .email(email)
+                                .passwordHash("")
+                                .nickname(extractNickname(email))
+                                .provider("kakao")
+                                .build()
+                ));
+
+        String token = jwtTokenProvider.generateAccessToken(user.getUserId(), user.getEmail());
+
+        return new LoginResponse(token, user.getUserId(), user.getNickname());
+    }
+
+    private String getKakaoToken(String code) {
+        System.out.println("=== 카카오 토큰 요청 ===");
+        System.out.println("kakaoClientId: " + kakaoClientId);
+        System.out.println("kakaoRedirectUri: " + kakaoRedirectUri);
+        System.out.println("code: " + code);
+
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("grant_type", "authorization_code");
+        params.add("client_id", kakaoClientId);
+        params.add("redirect_uri", kakaoRedirectUri);
+        params.add("code", code);
+
+        Map<?, ?> response = webClient.post()
+                .uri("https://kauth.kakao.com/oauth/token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .bodyValue(params)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
+
+        return (String) response.get("access_token");
+    }
+
+    private String getKakaoUserEmail(String kakaoAccessToken) {
+        Map<?, ?> response = webClient.get()
+                .uri("https://kapi.kakao.com/v2/user/me")
+                .header("Authorization", "Bearer " + kakaoAccessToken)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
+
+        Map<?, ?> kakaoAccount = (Map<?, ?>) response.get("kakao_account");
+        return (String) kakaoAccount.get("email");
+    }
+
+    private String extractNickname(String email) {
+        return email.split("@")[0];
     }
 }
