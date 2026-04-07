@@ -2,7 +2,7 @@ spring:
   application:
     name: backend
   profiles:
-    include: secret  # 추가
+    include: secret
 
   datasource:
     url: jdbc:postgresql://localhost:5432/orda
@@ -19,7 +19,6 @@ spring:
         format_sql: true
     open-in-view: false
 
-  # 프로필 이미지 업로드 파일 크기 제한 설정 추가
   servlet:
     multipart:
       max-file-size: 5MB
@@ -33,16 +32,13 @@ jwt:
   access-token-expiration: 1800000
   refresh-token-expiration: 604800000
 
-# 프로필 이미지 로컬 저장 경로 설정 추가
 file:
   upload-dir: uploads/profile-images
   static-resource-dir: uploads
 
-# DEM 파일 경로 설정 (운영 시 환경변수 DEM_FILE_PATH로 설정, 개발 환경에서는 빈값 유지)
 dem:
   file-path: ${DEM_FILE_PATH:}
 
-# 카카오 인증 (application-secret.yml에서 실제 값 주입)
 kakao:
   client-id: ${KAKAO_CLIENT_ID}
   redirect-uri: ${KAKAO_REDIRECT_URI}
