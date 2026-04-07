@@ -96,10 +96,6 @@ public class AuthService {
     }
 
     private String getKakaoToken(String code) {
-        System.out.println("=== 카카오 토큰 요청 ===");
-        System.out.println("kakaoClientId: " + kakaoClientId);
-        System.out.println("kakaoRedirectUri: " + kakaoRedirectUri);
-        System.out.println("code: " + code);
 
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
         params.add("grant_type", "authorization_code");
