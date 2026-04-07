@@ -50,4 +50,16 @@ public class TrailController {
                 ApiResponse.success("정상 기준 난이도 지도 조회 성공",
                         trailDifficultyService.getDifficultyMapBySummit(summitId)));
     }
+
+    // [feat/trail-difficulty-map] bbox 기반 난이도 지도 조회 엔드포인트 추가
+    @GetMapping("/difficulty/map/bbox")
+    public ResponseEntity<ApiResponse<GeoJsonFeatureCollectionResponse>> getDifficultyMapByBbox(
+            @RequestParam double minLng,
+            @RequestParam double minLat,
+            @RequestParam double maxLng,
+            @RequestParam double maxLat) {
+        return ResponseEntity.ok(
+                ApiResponse.success("뷰포트 기반 난이도 지도 조회 성공",
+                        trailDifficultyService.getDifficultyMapByBbox(minLng, minLat, maxLng, maxLat)));
+    }
 }

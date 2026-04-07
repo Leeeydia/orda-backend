@@ -51,6 +51,13 @@ public class TrailDifficultyService {
         return buildFeatureCollection(rows);
     }
 
+    // [feat/trail-difficulty-map] bbox 기반 필터링 메서드 추가
+    public GeoJsonFeatureCollectionResponse getDifficultyMapByBbox(
+            double minLng, double minLat, double maxLng, double maxLat) {
+        List<Object[]> rows = trailEdgeRepository.findEdgesWithGeomByBbox(minLng, minLat, maxLng, maxLat);
+        return buildFeatureCollection(rows);
+    }
+
     private GeoJsonFeatureCollectionResponse buildFeatureCollection(List<Object[]> rows) {
         List<GeoJsonFeatureResponse> features = new ArrayList<>();
 
