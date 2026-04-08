@@ -41,7 +41,7 @@ public class User {
 
     private String provider;         // local / kakao
 
-    @Column(name = "kakao_id", unique = true, length = 50)
+    @Column(name = "kakao_id", unique = true, length = 255)
     private String kakaoId;                     // 카카오 고유 식별자
 
     @Column(name = "created_at", updatable = false)
