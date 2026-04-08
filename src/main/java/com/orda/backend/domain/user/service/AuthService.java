@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.util.Map;
 
@@ -71,62 +72,106 @@ public class AuthService {
         }
 
         String token = jwtTokenProvider.generateAccessToken(user.getUserId(), user.getEmail());
-
         return new LoginResponse(token, user.getUserId(), user.getNickname());
     }
 
     @Transactional
     public LoginResponse kakaoLogin(String code) {
         String kakaoAccessToken = getKakaoToken(code);
-        String email = getKakaoUserEmail(kakaoAccessToken);
+        KakaoUserInfo kakaoUserInfo = getKakaoUserInfo(kakaoAccessToken);
 
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByProviderAndKakaoId("kakao", kakaoUserInfo.kakaoId())
                 .orElseGet(() -> userRepository.save(
                         User.builder()
-                                .email(email)
+                                .email(kakaoUserInfo.email())
                                 .passwordHash("")
-                                .nickname(extractNickname(email))
+                                .nickname(generateUniqueNickname(kakaoUserInfo.email()))
                                 .provider("kakao")
+                                .kakaoId(kakaoUserInfo.kakaoId())
                                 .build()
                 ));
 
         String token = jwtTokenProvider.generateAccessToken(user.getUserId(), user.getEmail());
-
         return new LoginResponse(token, user.getUserId(), user.getNickname());
     }
 
     private String getKakaoToken(String code) {
-
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
         params.add("grant_type", "authorization_code");
         params.add("client_id", kakaoClientId);
         params.add("redirect_uri", kakaoRedirectUri);
         params.add("code", code);
 
-        Map<?, ?> response = webClient.post()
-                .uri("https://kauth.kakao.com/oauth/token")
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .bodyValue(params)
-                .retrieve()
-                .bodyToMono(Map.class)
-                .block();
+        Map<?, ?> response;
+        try {
+            response = webClient.post()
+                    .uri("https://kauth.kakao.com/oauth/token")
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .bodyValue(params)
+                    .retrieve()
+                    .onStatus(status -> status.is4xxClientError(),
+                            res -> Mono.error(new IllegalArgumentException("유효하지 않은 카카오 인가 코드입니다")))
+                    .onStatus(status -> status.is5xxServerError(),
+                            res -> Mono.error(new IllegalStateException("카카오 서버 오류입니다")))
+                    .bodyToMono(Map.class)
+                    .block();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("카카오 토큰 요청 중 오류가 발생했습니다");
+        }
 
-        return (String) response.get("access_token");
+        String accessToken = (String) response.get("access_token");
+        if (accessToken == null) {
+            throw new IllegalStateException("카카오 토큰 응답에 access_token이 없습니다");
+        }
+        return accessToken;
     }
 
-    private String getKakaoUserEmail(String kakaoAccessToken) {
-        Map<?, ?> response = webClient.get()
-                .uri("https://kapi.kakao.com/v2/user/me")
-                .header("Authorization", "Bearer " + kakaoAccessToken)
-                .retrieve()
-                .bodyToMono(Map.class)
-                .block();
+    private KakaoUserInfo getKakaoUserInfo(String kakaoAccessToken) {
+        Map<?, ?> response;
+        try {
+            response = webClient.get()
+                    .uri("https://kapi.kakao.com/v2/user/me")
+                    .header("Authorization", "Bearer " + kakaoAccessToken)
+                    .retrieve()
+                    .onStatus(status -> status.is4xxClientError(),
+                            res -> Mono.error(new IllegalArgumentException("카카오 사용자 정보 조회에 실패했습니다")))
+                    .onStatus(status -> status.is5xxServerError(),
+                            res -> Mono.error(new IllegalStateException("카카오 서버 오류입니다")))
+                    .bodyToMono(Map.class)
+                    .block();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("카카오 사용자 정보 요청 중 오류가 발생했습니다");
+        }
+
+        Object idObj = response.get("id");
+        if (idObj == null) {
+            throw new IllegalStateException("카카오 응답에 사용자 id가 없습니다");
+        }
+        String kakaoId = String.valueOf(idObj);
 
         Map<?, ?> kakaoAccount = (Map<?, ?>) response.get("kakao_account");
-        return (String) kakaoAccount.get("email");
+        String email = (kakaoAccount != null) ? (String) kakaoAccount.get("email") : null;
+        if (email == null) {
+            throw new IllegalArgumentException("카카오 계정에 이메일 제공 동의가 필요합니다");
+        }
+
+        return new KakaoUserInfo(kakaoId, email);
     }
 
-    private String extractNickname(String email) {
-        return email.split("@")[0];
+    private String generateUniqueNickname(String email) {
+        String base = (email != null) ? email.split("@")[0] : "user";
+        String candidate = base;
+        int suffix = 1;
+
+        while (userRepository.existsByNickname(candidate)) {
+            candidate = base + suffix++;
+        }
+        return candidate;
     }
+
+    private record KakaoUserInfo(String kakaoId, String email) {}
 }
