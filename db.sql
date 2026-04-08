@@ -1,10 +1,14 @@
-CREATE DATABASE orda;
+DROP TABLE IF EXISTS user_stats CASCADE;
+DROP TABLE IF EXISTS summit_verifications CASCADE;
+DROP TABLE IF EXISTS gps_tracks CASCADE;
+DROP TABLE IF EXISTS hiking_sessions CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS summit_points CASCADE;
+DROP TABLE IF EXISTS trail_edges CASCADE;
+DROP TABLE IF EXISTS trail_nodes CASCADE;
 
 CREATE EXTENSION IF NOT EXISTS postgis;
 
--- ──────────────────────────────────────────────
--- trail_nodes
--- ──────────────────────────────────────────────
 CREATE TABLE trail_nodes
 (
     node_id          TEXT PRIMARY KEY,
@@ -17,9 +21,6 @@ CREATE TABLE trail_nodes
 );
 CREATE INDEX idx_trail_nodes_geom ON trail_nodes USING GIST (geom);
 
--- ──────────────────────────────────────────────
--- trail_edges
--- ──────────────────────────────────────────────
 CREATE TABLE trail_edges
 (
     edge_id           TEXT PRIMARY KEY,
@@ -39,9 +40,6 @@ CREATE TABLE trail_edges
 );
 CREATE INDEX idx_trail_edges_geom ON trail_edges USING GIST (geom);
 
--- ──────────────────────────────────────────────
--- summit_points
--- ──────────────────────────────────────────────
 CREATE TABLE summit_points
 (
     summit_id   TEXT PRIMARY KEY,
@@ -53,28 +51,24 @@ CREATE TABLE summit_points
 );
 CREATE INDEX idx_summit_points_geom ON summit_points USING GIST (geom);
 
--- ──────────────────────────────────────────────
--- users
--- ──────────────────────────────────────────────
 CREATE TABLE users
 (
     user_id           BIGSERIAL    PRIMARY KEY,
     email             VARCHAR(255) NOT NULL UNIQUE,
-    password_hash     VARCHAR(255) NOT NULL,
+    password_hash     VARCHAR(255) NOT NULL DEFAULT '',
     nickname          VARCHAR(50)  NOT NULL,
-    name              VARCHAR(50)  NOT NULL,
-    phone             VARCHAR(20)  NOT NULL UNIQUE,
+    name              VARCHAR(50),
+    phone             VARCHAR(20)  UNIQUE,
     birth_date        DATE,
     profile_image_url VARCHAR(500),
+    provider          VARCHAR(50)  NOT NULL DEFAULT 'local',
+    kakao_id          VARCHAR(255) UNIQUE,
     created_at        TIMESTAMP    NOT NULL DEFAULT now(),
     updated_at        TIMESTAMP    NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_users_email ON users (email);
 CREATE INDEX idx_users_phone ON users (phone);
 
--- ──────────────────────────────────────────────
--- hiking_sessions
--- ──────────────────────────────────────────────
 CREATE TABLE hiking_sessions
 (
     session_id             BIGSERIAL PRIMARY KEY,
@@ -95,9 +89,6 @@ CREATE INDEX idx_hiking_sessions_user_id ON hiking_sessions (user_id);
 CREATE INDEX idx_hiking_sessions_status ON hiking_sessions (status);
 CREATE INDEX idx_hiking_sessions_started_at ON hiking_sessions (started_at DESC);
 
--- ──────────────────────────────────────────────
--- gps_tracks
--- ──────────────────────────────────────────────
 CREATE TABLE gps_tracks
 (
     track_id              BIGSERIAL PRIMARY KEY,
@@ -120,11 +111,6 @@ CREATE TABLE gps_tracks
 CREATE INDEX idx_gps_tracks_session_id ON gps_tracks (session_id, sequence_num);
 CREATE INDEX idx_gps_tracks_geom ON gps_tracks USING GIST (geom);
 
--- ──────────────────────────────────────────────
--- summit_verifications
--- verification_method: gps(MVP) / photo(도전과제) / photo_exif / sign_recognition
--- photo_path: 사진 인증 시 저장된 사진 경로 (GPS 인증은 null)
--- ──────────────────────────────────────────────
 CREATE TABLE summit_verifications
 (
     verification_id      BIGSERIAL PRIMARY KEY,
@@ -142,9 +128,6 @@ CREATE TABLE summit_verifications
 CREATE INDEX idx_summit_verifications_session ON summit_verifications (session_id);
 CREATE INDEX idx_summit_verifications_summit ON summit_verifications (summit_id);
 
--- ──────────────────────────────────────────────
--- user_stats
--- ──────────────────────────────────────────────
 CREATE TABLE user_stats
 (
     stat_id                BIGSERIAL PRIMARY KEY,
