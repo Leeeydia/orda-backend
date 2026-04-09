@@ -7,8 +7,9 @@ import lombok.Getter;
 @Builder
 public class ReplaySummaryResponse {
 
-    private final Double totalDistanceMeters;
+    private final double totalDistanceMeters;
     private final Double totalElevationGainMeters;
     private final Double totalElevationLossMeters;
-    private final Integer totalElapsedSeconds;
+    private final int totalElapsedSeconds;
+    private final String elevationSummaryStatus;
 }

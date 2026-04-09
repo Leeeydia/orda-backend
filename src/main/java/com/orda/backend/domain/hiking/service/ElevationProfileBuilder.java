@@ -25,9 +25,9 @@ public class ElevationProfileBuilder {
 
         EnrichedTrackPoint previous = null;
         for (EnrichedTrackPoint current : points) {
-            validatePoint(current);
+            validateSequence(current);
 
-            double elevationDiffMeters = 0.0;
+            Double elevationDiffMeters = null;
             if (previous != null && previous.getElevationM() != null && current.getElevationM() != null) {
                 elevationDiffMeters = current.getElevationM() - previous.getElevationM();
             }
@@ -37,6 +37,11 @@ public class ElevationProfileBuilder {
                     .latitude(current.getLatitude())
                     .longitude(current.getLongitude())
                     .elevationMeters(current.getElevationM())
+                    .elevationStatus(
+                            current.getElevationStatus() != null
+                                    ? current.getElevationStatus().name()
+                                    : null
+                    )
                     .segmentDistanceMeters(current.getDistanceFromPrevM())
                     .cumulativeDistanceMeters(current.getDistanceFromStartM())
                     .elevationDiffMeters(elevationDiffMeters)
@@ -51,6 +56,7 @@ public class ElevationProfileBuilder {
                 .maxElevationMeters(trackStatsCalculator.calculateMaxElevation(points))
                 .totalElevationGainMeters(trackStatsCalculator.calculateElevationGain(points))
                 .totalElevationLossMeters(trackStatsCalculator.calculateElevationLoss(points))
+                .elevationSummaryStatus(trackStatsCalculator.calculateElevationSummaryStatus(points))
                 .pointCount(trackStatsCalculator.calculatePointCount(points))
                 .build();
 
@@ -61,12 +67,9 @@ public class ElevationProfileBuilder {
                 .build();
     }
 
-    private void validatePoint(EnrichedTrackPoint point) {
+    private void validateSequence(EnrichedTrackPoint point) {
         if (point.getSequenceNum() == null) {
             throw new IllegalArgumentException("sequence 정보가 없습니다.");
-        }
-        if (point.getElevationM() == null) {
-            throw new IllegalArgumentException("고도 정보가 없습니다. sequenceNum=" + point.getSequenceNum());
         }
     }
 }

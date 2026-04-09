@@ -8,10 +8,11 @@ import lombok.Getter;
 public class ElevationProfilePointResponse {
 
     private final Integer sequenceNum;
-    private final Double latitude;
-    private final Double longitude;
+    private final double latitude;
+    private final double longitude;
     private final Double elevationMeters;
-    private final Double segmentDistanceMeters;
-    private final Double cumulativeDistanceMeters;
+    private final String elevationStatus;
+    private final double segmentDistanceMeters;
+    private final double cumulativeDistanceMeters;
     private final Double elevationDiffMeters;
 }
