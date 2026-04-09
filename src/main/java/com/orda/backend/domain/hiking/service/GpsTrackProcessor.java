@@ -25,22 +25,16 @@ public class GpsTrackProcessor {
      *
      * @param rawLat raw GPS 위도
      * @param rawLon raw GPS 경도
-     * @param rawElevationM raw GPS 고도
-     *                      (저장만 하고 공식 canonical 계산에는 사용하지 않음)
      */
-    public CanonicalGpsPoint process(double rawLat, double rawLon, Double rawElevationM) {
-
-        // 1. 등산로 스냅
+    public CanonicalGpsPoint process(double rawLat, double rawLon) {
         SnappedPoint snapped = trailSnapService.snap(rawLat, rawLon);
 
         double canonicalLat = snapped.getLatitude();
         double canonicalLon = snapped.getLongitude();
 
-        // 2. 스냅 좌표 기준 DEM 고도 샘플링
         Double demElevation = demService.getElevation(canonicalLat, canonicalLon);
 
         if (demElevation != null) {
-            // DEM 성공
             return CanonicalGpsPoint.builder()
                     .snappedLatitude(canonicalLat)
                     .snappedLongitude(canonicalLon)

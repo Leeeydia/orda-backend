@@ -117,8 +117,7 @@ public class HikingService {
 
         CanonicalGpsPoint canonical = gpsTrackProcessor.process(
                 request.getLatitude(),
-                request.getLongitude(),
-                request.getElevationM()
+                request.getLongitude()
         );
 
         org.locationtech.jts.geom.Point geom = geometryFactory.createPoint(

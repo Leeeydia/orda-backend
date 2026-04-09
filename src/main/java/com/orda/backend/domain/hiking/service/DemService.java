@@ -39,9 +39,8 @@ public class DemService {
 
     @PostConstruct
     public void init() {
-        // 빈 경로면 fallback 모드로 동작
         if (demFilePath == null || demFilePath.isBlank()) {
-            log.info("DEM 파일 경로가 설정되지 않았습니다. elevation_source=gps_fallback으로 동작합니다.");
+            log.info("DEM 파일 경로가 설정되지 않았습니다. canonical 고도는 null 처리됩니다.");
             return;
         }
 
@@ -59,12 +58,10 @@ public class DemService {
             imageWidth = rasters.getWidth();
             imageHeight = rasters.getHeight();
 
-            // GeoTIFF ModelTiepointTag: [픽셀X, 픽셀Y, 픽셀Z, 지리X(경도), 지리Y(위도), 지리Z]
             List<Double> tiepoint = directory.getModelTiepoint();
             originLon = tiepoint.get(3);
             originLat = tiepoint.get(4);
 
-            // GeoTIFF ModelPixelScaleTag: [경도 해상도, 위도 해상도, Z]
             List<Double> pixelScale = directory.getModelPixelScale();
             pixelWidth = pixelScale.get(0);
             pixelHeight = pixelScale.get(1);
@@ -81,20 +78,18 @@ public class DemService {
      *
      * @param lat 위도 (snapped)
      * @param lon 경도 (snapped)
-     * @return 고도(미터). DEM 미로드, 범위 밖, nodata면 null 반환 → gps_fallback 또는 none으로 처리됨
+     * @return 고도(미터). DEM 미로드, 범위 밖, nodata면 null 반환
      */
     public Double getElevation(double lat, double lon) {
         if (!loaded) {
-            log.debug("DEM 미로드 상태 - fallback 처리. lat={}, lon={}", lat, lon);
+            log.debug("DEM 미로드 상태 - canonical 고도 없음. lat={}, lon={}", lat, lon);
             return null;
         }
 
         try {
-            // 지리 좌표 → 픽셀 좌표 변환
             int pixelX = (int) Math.round((lon - originLon) / pixelWidth);
             int pixelY = (int) Math.round((originLat - lat) / pixelHeight);
 
-            // 범위 밖 체크
             if (pixelX < 0 || pixelX >= imageWidth || pixelY < 0 || pixelY >= imageHeight) {
                 log.debug("DEM 범위 밖 좌표. lat={}, lon={}", lat, lon);
                 return null;
@@ -103,7 +98,6 @@ public class DemService {
             Number value = rasters.getPixel(pixelX, pixelY)[0];
             double elevation = value.doubleValue();
 
-            // nodata 체크
             if (Double.isNaN(elevation) || elevation <= -9000) {
                 log.debug("DEM nodata 값. lat={}, lon={}", lat, lon);
                 return null;
