@@ -81,15 +81,22 @@ public class AuthService {
         KakaoUserInfo kakaoUserInfo = getKakaoUserInfo(kakaoAccessToken);
 
         User user = userRepository.findByProviderAndKakaoId("kakao", kakaoUserInfo.kakaoId())
-                .orElseGet(() -> userRepository.save(
-                        User.builder()
-                                .email(kakaoUserInfo.email())
-                                .passwordHash("")
-                                .nickname(generateUniqueNickname(kakaoUserInfo.email()))
-                                .provider("kakao")
-                                .kakaoId(kakaoUserInfo.kakaoId())
-                                .build()
-                ));
+                .orElseGet(() -> {
+                    if (userRepository.existsByEmail(kakaoUserInfo.email())) {
+                        throw new IllegalArgumentException(
+                                "동일한 이메일로 가입된 계정이 이미 존재합니다. 기존 방식으로 로그인해 주세요."
+                        );
+                    }
+                    return userRepository.save(
+                            User.builder()
+                                    .email(kakaoUserInfo.email())
+                                    .passwordHash("")
+                                    .nickname(generateUniqueNickname(kakaoUserInfo.email()))
+                                    .provider("kakao")
+                                    .kakaoId(kakaoUserInfo.kakaoId())
+                                    .build()
+                    );
+                });
 
         String token = jwtTokenProvider.generateAccessToken(user.getUserId(), user.getEmail());
         return new LoginResponse(token, user.getUserId(), user.getNickname());
