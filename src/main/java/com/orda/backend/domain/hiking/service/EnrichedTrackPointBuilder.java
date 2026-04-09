@@ -54,7 +54,12 @@ public class EnrichedTrackPointBuilder {
                     .sequenceNum(current.getSequenceNum())
                     .latitude(latitude)
                     .longitude(longitude)
-                    .elevationM(current.getCanonicalElevationM()) // getElevationM() → getCanonicalElevationM()
+                    .elevationM(current.getCanonicalElevationM())
+                    .elevationStatus(
+                            current.getCanonicalElevationM() != null
+                                    ? EnrichedTrackPoint.ElevationStatus.DEM
+                                    : EnrichedTrackPoint.ElevationStatus.MISSING
+                    )
                     .recordedAt(current.getRecordedAt())
                     .distanceFromPrevM(distanceFromPrevM)
                     .distanceFromStartM(cumulativeDistanceMeters)
