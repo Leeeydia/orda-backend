@@ -58,6 +58,28 @@ def iter_paths(feature: dict[str, Any]) -> Iterable[list[list[float]]]:
     return paths
 
 
+MAX_COORD_INTERVAL_M = 500.0  # 연속된 좌표 간 최대 허용 거리 (500m 초과 시 오류로 판단)
+
+
+def haversine_m(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
+    """두 좌표 사이 거리를 미터 단위로 계산한다 (Haversine)."""
+    import math
+    R = 6371000.0
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlng / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def has_abnormal_coord_interval(coords: list[list[float]], max_interval_m: float = MAX_COORD_INTERVAL_M) -> bool:
+    """연속된 좌표 간 거리가 max_interval_m 초과하면 True 반환."""
+    for i in range(len(coords) - 1):
+        dist = haversine_m(coords[i][0], coords[i][1], coords[i + 1][0], coords[i + 1][1])
+        if dist > max_interval_m:
+            return True
+    return False
+
+
 def dedupe_consecutive_coords(coords: list[list[float]]) -> list[list[float]]:
     if not coords:
         return []
@@ -105,6 +127,10 @@ def build_linestring_coords(feature: dict[str, Any]) -> list[list[float]] | None
 
     # 전체가 같은 점만 반복된 경우 방어
     if len({tuple(coord) for coord in merged_coords}) < 2:
+        return None
+
+    # 연속된 좌표 간 거리가 비정상적으로 크면 오류 데이터로 판단
+    if has_abnormal_coord_interval(merged_coords):
         return None
 
     return merged_coords

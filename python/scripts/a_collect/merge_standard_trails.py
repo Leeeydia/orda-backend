@@ -703,8 +703,10 @@ def main() -> None:
     public_data = read_json(PUBLIC_INPUT_PATH)
     public_features = validate_feature_collection(public_data, "PUBLIC")
 
-    osm_data = read_json(OSM_INPUT_PATH)
-    osm_features = validate_feature_collection(osm_data, "OSM")
+    # [orda/feat/trail-difficulty] OSM 데이터 일시 배제 (로직은 유지, 나중에 재활성화 가능)
+    # osm_data = read_json(OSM_INPUT_PATH)
+    # osm_features = validate_feature_collection(osm_data, "OSM")
+    osm_features: list = []
 
     merged_features, merge_stats, quality_summary = merge_public_first(
         public_features=public_features,
