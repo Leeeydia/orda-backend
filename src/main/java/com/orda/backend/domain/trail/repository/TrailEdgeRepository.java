@@ -40,7 +40,7 @@ public interface TrailEdgeRepository extends JpaRepository<TrailEdge, String> {
         """, nativeQuery = true)
     List<Object[]> findEdgesWithGeomBySummitId(@Param("summitId") String summitId);
 
-    // [feat/trail-difficulty-map] bbox 기반 필터링 쿼리 추가
+    // bbox 기반 필터링 쿼리 추가
     @Query(value = """
         SELECT
             edge_id,

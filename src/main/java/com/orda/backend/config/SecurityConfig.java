@@ -37,8 +37,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/summit/**").permitAll()  // TODO: feat/auth 완료 후 제거
                         .requestMatchers("/api/stats/**").permitAll()   // TODO: feat/auth 완료 후 제거
                         .requestMatchers("/api/mypage/**").permitAll()  // TODO: feat/auth 완료 후 제거
-                        .requestMatchers("/api/settings/**").permitAll() // TODO: feat/auth 완료 후 제거 // 추가
-                        .requestMatchers("/api/trails/**").permitAll()  // TODO: feat/auth 완료 후 제거 // [feat/trail-bbox-filter] 추가
+                        .requestMatchers("/api/settings/**").permitAll() // TODO: feat/auth 완료 후 제거
+                        .requestMatchers("/api/trails/**").permitAll()  // TODO: feat/auth 완료 후 제거
                         .requestMatchers("/uploads/**").permitAll()
                         .anyRequest().authenticated()
                 )

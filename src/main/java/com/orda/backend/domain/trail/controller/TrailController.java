@@ -51,7 +51,7 @@ public class TrailController {
                         trailDifficultyService.getDifficultyMapBySummit(summitId)));
     }
 
-    // [feat/trail-difficulty-map] bbox 기반 난이도 지도 조회 엔드포인트 추가
+    // bbox 기반 난이도 지도 조회 엔드포인트 추가
     @GetMapping("/difficulty/map/bbox")
     public ResponseEntity<ApiResponse<GeoJsonFeatureCollectionResponse>> getDifficultyMapByBbox(
             @RequestParam double minLng,
