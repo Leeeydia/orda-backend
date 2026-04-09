@@ -21,11 +21,12 @@ public class GpsTrackProcessor {
      * 변환 순서:
      * 1. raw 좌표 → 등산로 스냅
      * 2. 스냅 좌표 기준 DEM 고도 샘플링
-     * 3. DEM 실패 시 raw 고도로 fallback
+     * 3. DEM 실패 시 canonical 고도는 null 처리
      *
-     * @param rawLat      raw GPS 위도
-     * @param rawLon      raw GPS 경도
-     * @param rawElevationM raw GPS 고도 (null 가능)
+     * @param rawLat raw GPS 위도
+     * @param rawLon raw GPS 경도
+     * @param rawElevationM raw GPS 고도
+     *                      (저장만 하고 공식 canonical 계산에는 사용하지 않음)
      */
     public CanonicalGpsPoint process(double rawLat, double rawLon, Double rawElevationM) {
 
@@ -48,19 +49,7 @@ public class GpsTrackProcessor {
                     .build();
         }
 
-        // 3. DEM 실패 → raw 고도 fallback
-        if (rawElevationM != null) {
-            log.debug("DEM 샘플링 실패 - raw 고도 fallback. lat={}, lon={}", canonicalLat, canonicalLon);
-            return CanonicalGpsPoint.builder()
-                    .snappedLatitude(canonicalLat)
-                    .snappedLongitude(canonicalLon)
-                    .canonicalElevationM(rawElevationM)
-                    .elevationSource(ElevationSource.gps_fallback)
-                    .build();
-        }
-
-        // 4. DEM 실패 + raw 고도도 없음
-        log.debug("고도 데이터 없음. lat={}, lon={}", canonicalLat, canonicalLon);
+        log.debug("DEM 샘플링 실패 - canonical 고도 없음. lat={}, lon={}", canonicalLat, canonicalLon);
         return CanonicalGpsPoint.builder()
                 .snappedLatitude(canonicalLat)
                 .snappedLongitude(canonicalLon)
