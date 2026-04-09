@@ -113,14 +113,12 @@ public class HikingService {
 
         int nextSeq = gpsTrackRepository.findMaxSequenceNum(sessionId) + 1;
 
-        // canonical 변환 먼저 수행
         CanonicalGpsPoint canonical = gpsTrackProcessor.process(
                 request.getLatitude(),
                 request.getLongitude(),
                 request.getElevationM()
         );
 
-        // geom은 canonical 처리 이후 snapped 좌표 기준으로 생성
         org.locationtech.jts.geom.Point geom = geometryFactory.createPoint(
                 new Coordinate(canonical.getSnappedLongitude(), canonical.getSnappedLatitude())
         );
@@ -194,10 +192,6 @@ public class HikingService {
                     Map<String, Object> properties = new HashMap<>();
                     properties.put("trackId", track.getTrackId());
                     properties.put("sequenceNum", track.getSequenceNum());
-                    properties.put("canonicalElevationM", track.getCanonicalElevationM());
-                    properties.put("elevationSource", track.getElevationSource());
-                    properties.put("accuracyM", track.getAccuracyM());
-                    properties.put("recordedAt", track.getRecordedAt().toString());
 
                     return GeoJsonFeatureResponse.of(geometry, properties);
                 })
