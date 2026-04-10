@@ -38,7 +38,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/stats/**").permitAll()   // TODO: feat/auth 완료 후 제거
                         .requestMatchers("/api/mypage/**").permitAll()  // TODO: feat/auth 완료 후 제거
                         .requestMatchers("/api/settings/**").permitAll() // TODO: feat/auth 완료 후 제거
-                        .requestMatchers("/api/trails/**").permitAll()  // [orda/feat/trail-difficulty] TODO: feat/auth 완료 후 제거
+                        .requestMatchers("/api/trails/**").permitAll()  // TODO: feat/auth 완료 후 제거
                         .requestMatchers("/uploads/**").permitAll()
                         .anyRequest().authenticated()
                 )

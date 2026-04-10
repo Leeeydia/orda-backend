@@ -40,6 +40,28 @@ public interface TrailEdgeRepository extends JpaRepository<TrailEdge, String> {
         """, nativeQuery = true)
     List<Object[]> findEdgesWithGeomBySummitId(@Param("summitId") String summitId);
 
+    // bbox 기반 필터링 쿼리 추가
+    @Query(value = """
+        SELECT
+            edge_id,
+            difficulty,
+            difficulty_score,
+            ST_AsGeoJSON(geom)::text AS geom_json
+        FROM trail_edges
+        WHERE geom IS NOT NULL
+          AND difficulty IS NOT NULL
+          AND ST_Intersects(
+              geom,
+              ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)
+          )
+        """, nativeQuery = true)
+    List<Object[]> findEdgesWithGeomByBbox(
+            @Param("minLng") double minLng,
+            @Param("minLat") double minLat,
+            @Param("maxLng") double maxLng,
+            @Param("maxLat") double maxLat
+    );
+
     // ── GPS 스냅용 ────────────────────────────────────────────
     @Query(value = """
             SELECT

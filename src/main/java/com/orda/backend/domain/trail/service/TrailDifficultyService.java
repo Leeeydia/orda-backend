@@ -51,6 +51,13 @@ public class TrailDifficultyService {
         return buildFeatureCollection(rows);
     }
 
+    // bbox 기반 필터링 메서드 추가
+    public GeoJsonFeatureCollectionResponse getDifficultyMapByBbox(
+            double minLng, double minLat, double maxLng, double maxLat) {
+        List<Object[]> rows = trailEdgeRepository.findEdgesWithGeomByBbox(minLng, minLat, maxLng, maxLat);
+        return buildFeatureCollection(rows);
+    }
+
     private GeoJsonFeatureCollectionResponse buildFeatureCollection(List<Object[]> rows) {
         List<GeoJsonFeatureResponse> features = new ArrayList<>();
 
@@ -62,8 +69,13 @@ public class TrailDifficultyService {
 
             try {
                 Map<String, Object> geomMap = objectMapper.readValue(geomJson, Map.class);
-                List<List<Double>> coordinates = (List<List<Double>>) geomMap.get("coordinates");
 
+                // trail_edges.geom은 ST_LineString만 저장됨이 보장됨 (DB 확인 완료)
+                // 데이터 변경 시 잘못된 GeoJSON 방지를 위한 방어 코드
+                String geomType = (String) geomMap.get("type");
+                if (!"LineString".equals(geomType)) continue;
+
+                List<List<Double>> coordinates = (List<List<Double>>) geomMap.get("coordinates");
                 GeoJsonGeometryResponse geometry = GeoJsonGeometryResponse.lineString(coordinates);
 
                 Map<String, Object> properties = Map.of(

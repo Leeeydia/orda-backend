@@ -17,6 +17,12 @@ public class TrailController {
 
     private final TrailDifficultyService trailDifficultyService;
 
+    // bbox 파라미터 유효성 검증 한국 범위 상수
+    private static final double KR_MIN_LNG = 120.0;
+    private static final double KR_MAX_LNG = 140.0;
+    private static final double KR_MIN_LAT = 30.0;
+    private static final double KR_MAX_LAT = 45.0;
+
     @GetMapping("/difficulty")
     public ResponseEntity<ApiResponse<TrailDifficultyResponse>> getDifficulty(
             @RequestParam String edgeId) {
@@ -49,5 +55,28 @@ public class TrailController {
         return ResponseEntity.ok(
                 ApiResponse.success("정상 기준 난이도 지도 조회 성공",
                         trailDifficultyService.getDifficultyMapBySummit(summitId)));
+    }
+
+    // bbox 기반 난이도 지도 조회 엔드포인트 추가
+    @GetMapping("/difficulty/map/bbox")
+    public ResponseEntity<ApiResponse<GeoJsonFeatureCollectionResponse>> getDifficultyMapByBbox(
+            @RequestParam double minLng,
+            @RequestParam double minLat,
+            @RequestParam double maxLng,
+            @RequestParam double maxLat) {
+
+        // bbox 파라미터 유효성 검증 추가
+        if (minLng >= maxLng || minLat >= maxLat) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("잘못된 bbox 파라미터: min 값이 max 값보다 크거나 같습니다."));
+        }
+        if (minLng < KR_MIN_LNG || maxLng > KR_MAX_LNG || minLat < KR_MIN_LAT || maxLat > KR_MAX_LAT) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("잘못된 bbox 파라미터: 한국 범위(lng: 120~140, lat: 30~45)를 벗어났습니다."));
+        }
+
+        return ResponseEntity.ok(
+                ApiResponse.success("뷰포트 기반 난이도 지도 조회 성공",
+                        trailDifficultyService.getDifficultyMapByBbox(minLng, minLat, maxLng, maxLat)));
     }
 }
