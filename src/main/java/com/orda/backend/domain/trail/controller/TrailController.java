@@ -53,11 +53,22 @@ public class TrailController {
 
     // bbox 기반 난이도 지도 조회 엔드포인트 추가
     @GetMapping("/difficulty/map/bbox")
-    public ResponseEntity<ApiResponse<GeoJsonFeatureCollectionResponse>> getDifficultyMapByBbox(
+    public ResponseEntity<?> getDifficultyMapByBbox(
             @RequestParam double minLng,
             @RequestParam double minLat,
             @RequestParam double maxLng,
             @RequestParam double maxLat) {
+
+        // bbox 파라미터 유효성 검증 추가
+        if (minLng >= maxLng || minLat >= maxLat) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("잘못된 bbox 파라미터: min 값이 max 값보다 크거나 같습니다."));
+        }
+        if (minLng < 120 || maxLng > 140 || minLat < 30 || maxLat > 45) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("잘못된 bbox 파라미터: 한국 범위(lng: 120~140, lat: 30~45)를 벗어났습니다."));
+        }
+
         return ResponseEntity.ok(
                 ApiResponse.success("뷰포트 기반 난이도 지도 조회 성공",
                         trailDifficultyService.getDifficultyMapByBbox(minLng, minLat, maxLng, maxLat)));

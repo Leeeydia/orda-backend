@@ -71,6 +71,7 @@ public class TrailDifficultyService {
                 Map<String, Object> geomMap = objectMapper.readValue(geomJson, Map.class);
                 List<List<Double>> coordinates = (List<List<Double>>) geomMap.get("coordinates");
 
+                // geometry 타입 LineString 고정: DB 확인 결과 trail_edges.geom은 ST_LineString만 존재
                 GeoJsonGeometryResponse geometry = GeoJsonGeometryResponse.lineString(coordinates);
 
                 Map<String, Object> properties = Map.of(
