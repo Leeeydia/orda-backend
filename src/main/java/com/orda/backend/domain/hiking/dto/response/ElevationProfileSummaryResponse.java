@@ -7,10 +7,11 @@ import lombok.Getter;
 @Builder
 public class ElevationProfileSummaryResponse {
 
-    private final Double totalDistanceMeters;
+    private final double totalDistanceMeters;
     private final Double minElevationMeters;
     private final Double maxElevationMeters;
     private final Double totalElevationGainMeters;
     private final Double totalElevationLossMeters;
-    private final Integer pointCount;
+    private final String elevationSummaryStatus;
+    private final int pointCount;
 }

@@ -52,6 +52,7 @@ public class HikingService {
     private final TrackStatsCalculator trackStatsCalculator;
     private final ReplayCalculator replayCalculator;
     private final GpsTrackProcessor gpsTrackProcessor;
+    private final ElevationResolver elevationResolver;
 
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
@@ -77,11 +78,12 @@ public class HikingService {
         List<GpsTrack> tracks = gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId);
         if (!tracks.isEmpty()) {
             List<EnrichedTrackPoint> enrichedPoints = enrichedTrackPointBuilder.build(tracks);
+            List<EnrichedTrackPoint> resolvedPoints = elevationResolver.resolve(enrichedPoints);
 
-            double totalDistanceM = trackStatsCalculator.calculateTotalDistance(enrichedPoints);
-            double totalElevationGainM = trackStatsCalculator.calculateElevationGain(enrichedPoints);
-            double totalElevationLossM = trackStatsCalculator.calculateElevationLoss(enrichedPoints);
-            int totalDurationSec = trackStatsCalculator.calculateTotalDurationSeconds(enrichedPoints);
+            double totalDistanceM = trackStatsCalculator.calculateTotalDistance(resolvedPoints);
+            Double totalElevationGainM = trackStatsCalculator.calculateElevationGain(resolvedPoints);
+            Double totalElevationLossM = trackStatsCalculator.calculateElevationLoss(resolvedPoints);
+            int totalDurationSec = trackStatsCalculator.calculateTotalDurationSeconds(resolvedPoints);
 
             session.updateStats(totalDistanceM, totalElevationGainM, totalElevationLossM, totalDurationSec);
 
@@ -113,14 +115,11 @@ public class HikingService {
 
         int nextSeq = gpsTrackRepository.findMaxSequenceNum(sessionId) + 1;
 
-        // canonical 변환 먼저 수행
         CanonicalGpsPoint canonical = gpsTrackProcessor.process(
                 request.getLatitude(),
-                request.getLongitude(),
-                request.getElevationM()
+                request.getLongitude()
         );
 
-        // geom은 canonical 처리 이후 snapped 좌표 기준으로 생성
         org.locationtech.jts.geom.Point geom = geometryFactory.createPoint(
                 new Coordinate(canonical.getSnappedLongitude(), canonical.getSnappedLatitude())
         );
@@ -149,8 +148,9 @@ public class HikingService {
 
         List<GpsTrack> tracks = gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId);
         List<EnrichedTrackPoint> enrichedPoints = enrichedTrackPointBuilder.build(tracks);
+        List<EnrichedTrackPoint> resolvedPoints = elevationResolver.resolve(enrichedPoints);
 
-        return elevationProfileBuilder.build(record.getId(), enrichedPoints);
+        return elevationProfileBuilder.build(record.getId(), resolvedPoints);
     }
 
     public ReplayResponse getReplay(Long sessionId, Integer maxPoints, Integer targetDurationSeconds) {
@@ -161,16 +161,18 @@ public class HikingService {
         validateReplayTracks(tracks, sessionId);
 
         List<EnrichedTrackPoint> enrichedPoints = enrichedTrackPointBuilder.build(tracks);
+        List<EnrichedTrackPoint> resolvedPoints = elevationResolver.resolve(enrichedPoints);
 
         ReplaySummaryResponse summary = ReplaySummaryResponse.builder()
-                .totalDistanceMeters(trackStatsCalculator.calculateTotalDistance(enrichedPoints))
-                .totalElevationGainMeters(trackStatsCalculator.calculateElevationGain(enrichedPoints))
-                .totalElevationLossMeters(trackStatsCalculator.calculateElevationLoss(enrichedPoints))
-                .totalElapsedSeconds(trackStatsCalculator.calculateTotalDurationSeconds(enrichedPoints))
+                .totalDistanceMeters(trackStatsCalculator.calculateTotalDistance(resolvedPoints))
+                .totalElevationGainMeters(trackStatsCalculator.calculateElevationGain(resolvedPoints))
+                .totalElevationLossMeters(trackStatsCalculator.calculateElevationLoss(resolvedPoints))
+                .totalElapsedSeconds(trackStatsCalculator.calculateTotalDurationSeconds(resolvedPoints))
+                .elevationSummaryStatus(trackStatsCalculator.calculateElevationSummaryStatus(resolvedPoints))
                 .build();
 
         List<ReplayPointResponse> replayPoints = replayCalculator.calculate(
-                enrichedPoints,
+                resolvedPoints,
                 maxPoints,
                 targetDurationSeconds
         );
@@ -194,10 +196,6 @@ public class HikingService {
                     Map<String, Object> properties = new HashMap<>();
                     properties.put("trackId", track.getTrackId());
                     properties.put("sequenceNum", track.getSequenceNum());
-                    properties.put("canonicalElevationM", track.getCanonicalElevationM());
-                    properties.put("elevationSource", track.getElevationSource());
-                    properties.put("accuracyM", track.getAccuracyM());
-                    properties.put("recordedAt", track.getRecordedAt().toString());
 
                     return GeoJsonFeatureResponse.of(geometry, properties);
                 })
