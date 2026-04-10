@@ -9,7 +9,10 @@ import java.util.List;
 @Component
 public class ElevationResolver {
 
-    private static final double MAX_INTERPOLATION_GAP_DISTANCE_M = 50.0;
+    // 현재 클라이언트 GPS 저장 주기(5초) 기준 초기 운영값.
+    // missing 3개는 양 끝 anchor 포함 최대 약 20초 구간에 해당하며,
+    // 긴 구간 상상 보간을 피하기 위해 30m 이하의 짧은 결손만 보간 대상으로 허용한다.
+    private static final double MAX_INTERPOLATION_GAP_DISTANCE_M = 30.0;
     private static final int MAX_CONSECUTIVE_MISSING_POINTS = 3;
 
     public List<EnrichedTrackPoint> resolve(List<EnrichedTrackPoint> points) {
@@ -57,6 +60,7 @@ public class ElevationResolver {
         EnrichedTrackPoint previous = points.get(start - 1);
         EnrichedTrackPoint next = points.get(end + 1);
 
+        // 연쇄 보간 오차를 막기 위해 anchor는 DEM 포인트만 허용
         if (!isUsableAnchor(previous) || !isUsableAnchor(next)) {
             return false;
         }
@@ -66,12 +70,8 @@ public class ElevationResolver {
     }
 
     private boolean isUsableAnchor(EnrichedTrackPoint point) {
-        if (point.getElevationM() == null) {
-            return false;
-        }
-
-        return point.getElevationStatus() == EnrichedTrackPoint.ElevationStatus.DEM
-                || point.getElevationStatus() == EnrichedTrackPoint.ElevationStatus.INTERPOLATED;
+        return point.getElevationM() != null
+                && point.getElevationStatus() == EnrichedTrackPoint.ElevationStatus.DEM;
     }
 
     private void interpolateRange(List<EnrichedTrackPoint> points, int start, int end) {

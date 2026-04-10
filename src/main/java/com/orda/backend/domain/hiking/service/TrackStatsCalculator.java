@@ -8,6 +8,9 @@ import java.util.List;
 @Component
 public class TrackStatsCalculator {
 
+    // 시작/끝의 아주 짧은 결손은 전체 고도 요약을 완전히 무효화하지 않기 위해 허용한다.
+    // 현재 GPS 저장 주기(5초) 기준으로 15m는 짧은 edge missing으로 보는 초기 운영값이며,
+    // 실제 세션 데이터 분포를 보고 추후 조정 예정이다.
     private static final double MAX_EDGE_MISSING_DISTANCE_M = 15.0;
 
     public double calculateTotalDistance(List<EnrichedTrackPoint> points) {
@@ -89,7 +92,7 @@ public class TrackStatsCalculator {
             return "UNAVAILABLE";
         }
 
-        if (hasInterpolated(points) || hasAnyEdgeMissing(points)) {
+        if (hasInterpolated(points) || hasSmallEdgeMissing(points)) {
             return "ESTIMATED";
         }
 
@@ -128,6 +131,8 @@ public class TrackStatsCalculator {
             return false;
         }
 
+        // GAP은 hasGap()에서 선행 차단되므로,
+        // 여기서는 DEM/INTERPOLATED 사이에 남아 있는 내부 MISSING만 확인한다.
         if (hasInternalMissing(points)) {
             return false;
         }
@@ -184,9 +189,12 @@ public class TrackStatsCalculator {
                 || getTrailingMissingDistance(points) > MAX_EDGE_MISSING_DISTANCE_M;
     }
 
-    private boolean hasAnyEdgeMissing(List<EnrichedTrackPoint> points) {
-        return getLeadingMissingDistance(points) > 0.0
-                || getTrailingMissingDistance(points) > 0.0;
+    private boolean hasSmallEdgeMissing(List<EnrichedTrackPoint> points) {
+        double leadingMissing = getLeadingMissingDistance(points);
+        double trailingMissing = getTrailingMissingDistance(points);
+
+        return (leadingMissing > 0.0 && leadingMissing <= MAX_EDGE_MISSING_DISTANCE_M)
+                || (trailingMissing > 0.0 && trailingMissing <= MAX_EDGE_MISSING_DISTANCE_M);
     }
 
     private boolean hasInterpolated(List<EnrichedTrackPoint> points) {
