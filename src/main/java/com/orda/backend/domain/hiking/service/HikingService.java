@@ -22,8 +22,11 @@ import com.orda.backend.domain.hiking.repository.GpsTrackRepository;
 import com.orda.backend.domain.hiking.repository.HikingRecordRepository;
 import com.orda.backend.domain.stats.entity.UserStats;
 import com.orda.backend.domain.stats.repository.UserStatsRepository;
+import com.orda.backend.domain.summit.entity.SummitPoint;
 import com.orda.backend.domain.summit.model.SessionVerifiedSummit;
+import com.orda.backend.domain.summit.repository.SummitPointRepository;
 import com.orda.backend.domain.summit.service.SummitService;
+import com.orda.backend.domain.hiking.dto.response.NearbySummitItem;
 import com.orda.backend.domain.trail.repository.TrailEdgeRepository;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Coordinate;
@@ -59,10 +62,12 @@ public class HikingService {
     private final ElevationResolver elevationResolver;
 
     private final TrailEdgeRepository trailEdgeRepository;
+    private final SummitPointRepository summitPointRepository;
 
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
     private static final double TRAIL_GUARD_RADIUS_M = 100.0;
+    private static final double NEARBY_SUMMIT_RADIUS_M = 3000.0;
 
     @Value("${hiking.trail-guard.enabled:false}")
     private boolean trailGuardEnabled;
@@ -79,7 +84,11 @@ public class HikingService {
                 .build();
 
         HikingRecord saved = hikingRecordRepository.save(session);
-        return new HikingStartResponse(saved.getId(), saved.getStartedAt());
+
+        List<NearbySummitItem> nearbySummits = findNearbySummits(
+                request.getLatitude(), request.getLongitude());
+
+        return new HikingStartResponse(saved.getId(), saved.getStartedAt(), nearbySummits);
     }
 
     @Transactional
@@ -217,6 +226,29 @@ public class HikingService {
                 .toList();
 
         return GeoJsonFeatureCollectionResponse.of(features);
+    }
+
+    private List<NearbySummitItem> findNearbySummits(Double latitude, Double longitude) {
+        if (latitude == null || longitude == null) {
+            return Collections.emptyList();
+        }
+
+        List<String> summitIds = trailEdgeRepository.findDistinctSummitIdsWithinRadius(
+                longitude, latitude, NEARBY_SUMMIT_RADIUS_M);
+
+        if (summitIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return summitPointRepository.findByIdIn(summitIds).stream()
+                .map(sp -> NearbySummitItem.builder()
+                        .summitId(sp.getId())
+                        .summitName(sp.getName())
+                        .latitude(sp.getGeom().getY())
+                        .longitude(sp.getGeom().getX())
+                        .elevationM(sp.getElevationM())
+                        .build())
+                .toList();
     }
 
     private void validateNearTrail(Double latitude, Double longitude) {
