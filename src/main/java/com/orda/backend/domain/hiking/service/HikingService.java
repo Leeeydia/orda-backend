@@ -3,6 +3,7 @@ package com.orda.backend.domain.hiking.service;
 import com.orda.backend.common.geojson.GeoJsonFeatureCollectionResponse;
 import com.orda.backend.common.geojson.GeoJsonFeatureResponse;
 import com.orda.backend.common.geojson.GeoJsonGeometryResponse;
+import com.orda.backend.common.projection.SnappedPointProjection;
 import com.orda.backend.domain.hiking.dto.request.GpsTrackRequest;
 import com.orda.backend.domain.hiking.dto.request.HikingStartRequest;
 import com.orda.backend.domain.hiking.dto.response.ElevationProfileResponse;
@@ -23,10 +24,12 @@ import com.orda.backend.domain.stats.entity.UserStats;
 import com.orda.backend.domain.stats.repository.UserStatsRepository;
 import com.orda.backend.domain.summit.model.SessionVerifiedSummit;
 import com.orda.backend.domain.summit.service.SummitService;
+import com.orda.backend.domain.trail.repository.TrailEdgeRepository;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +39,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -54,10 +58,21 @@ public class HikingService {
     private final GpsTrackProcessor gpsTrackProcessor;
     private final ElevationResolver elevationResolver;
 
+    private final TrailEdgeRepository trailEdgeRepository;
+
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
+
+    private static final double TRAIL_GUARD_RADIUS_M = 100.0;
+
+    @Value("${hiking.trail-guard.enabled:false}")
+    private boolean trailGuardEnabled;
 
     @Transactional
     public HikingStartResponse startHiking(HikingStartRequest request) {
+        if (trailGuardEnabled) {
+            validateNearTrail(request.getLatitude(), request.getLongitude());
+        }
+
         HikingRecord session = HikingRecord.builder()
                 .userId(request.getUserId())
                 .startedAt(LocalDateTime.now())
@@ -202,6 +217,20 @@ public class HikingService {
                 .toList();
 
         return GeoJsonFeatureCollectionResponse.of(features);
+    }
+
+    private void validateNearTrail(Double latitude, Double longitude) {
+        if (latitude == null || longitude == null) {
+            throw new IllegalArgumentException("등산 시작 위치 정보가 필요합니다.");
+        }
+
+        Optional<SnappedPointProjection> result =
+                trailEdgeRepository.findClosestPoint(longitude, latitude, TRAIL_GUARD_RADIUS_M);
+
+        if (result.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "등산로 근처에서 시작해주세요. (반경 " + (int) TRAIL_GUARD_RADIUS_M + "m 이내)");
+        }
     }
 
     private List<VerifiedSummitItem> buildVerifiedSummits(HikingRecord record) {

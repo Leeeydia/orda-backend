@@ -10,4 +10,7 @@ public class HikingStartRequest {
 
     @NotNull(message = "userId는 필수입니다.")
     private Long userId;
+
+    private Double latitude;
+    private Double longitude;
 }
