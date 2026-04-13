@@ -3,7 +3,9 @@ package com.orda.backend.domain.trail.controller;
 import com.orda.backend.common.geojson.GeoJsonFeatureCollectionResponse;
 import com.orda.backend.common.response.ApiResponse;
 import com.orda.backend.domain.trail.dto.response.TrailDifficultyResponse;
+import com.orda.backend.domain.trail.dto.response.TrailNearbyResponse;
 import com.orda.backend.domain.trail.service.TrailDifficultyService;
+import com.orda.backend.domain.trail.service.TrailNearbyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +18,7 @@ import java.util.List;
 public class TrailController {
 
     private final TrailDifficultyService trailDifficultyService;
+    private final TrailNearbyService trailNearbyService;
 
     // bbox 파라미터 유효성 검증 한국 범위 상수
     private static final double KR_MIN_LNG = 120.0;
@@ -78,5 +81,13 @@ public class TrailController {
         return ResponseEntity.ok(
                 ApiResponse.success("뷰포트 기반 난이도 지도 조회 성공",
                         trailDifficultyService.getDifficultyMapByBbox(minLng, minLat, maxLng, maxLat)));
+    }
+
+    @GetMapping("/check-nearby")
+    public ResponseEntity<ApiResponse<TrailNearbyResponse>> checkNearby(
+            @RequestParam double lat,
+            @RequestParam double lng) {
+        TrailNearbyResponse response = trailNearbyService.checkNearby(lat, lng);
+        return ResponseEntity.ok(ApiResponse.success("등산로 근접 확인 성공", response));
     }
 }
