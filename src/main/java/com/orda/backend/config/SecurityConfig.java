@@ -39,6 +39,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/mypage/**").permitAll()  // TODO: feat/auth 완료 후 제거
                         .requestMatchers("/api/settings/**").permitAll() // TODO: feat/auth 완료 후 제거
                         .requestMatchers("/api/trails/**").permitAll()  // TODO: feat/auth 완료 후 제거
+                        .requestMatchers("/api/mountains/**").permitAll()  // 100대 명산 조회 허용
                         .requestMatchers("/uploads/**").permitAll()
                         .anyRequest().authenticated()
                 )
