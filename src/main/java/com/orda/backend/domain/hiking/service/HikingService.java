@@ -13,6 +13,7 @@ import com.orda.backend.domain.hiking.dto.response.ReplayPointResponse;
 import com.orda.backend.domain.hiking.dto.response.ReplayResponse;
 import com.orda.backend.domain.hiking.dto.response.ReplaySummaryResponse;
 import com.orda.backend.domain.hiking.dto.response.VerifiedSummitItem;
+import com.orda.backend.domain.hiking.dto.response.NearbySummitItem;
 import com.orda.backend.domain.hiking.entity.GpsTrack;
 import com.orda.backend.domain.hiking.entity.HikingRecord;
 import com.orda.backend.domain.hiking.model.CanonicalGpsPoint;
@@ -22,11 +23,16 @@ import com.orda.backend.domain.hiking.repository.HikingRecordRepository;
 import com.orda.backend.domain.stats.entity.UserStats;
 import com.orda.backend.domain.stats.repository.UserStatsRepository;
 import com.orda.backend.domain.summit.model.SessionVerifiedSummit;
+import com.orda.backend.domain.summit.repository.SummitPointRepository;
 import com.orda.backend.domain.summit.service.SummitService;
+import com.orda.backend.domain.trail.dto.response.TrailNearbyResponse;
+import com.orda.backend.domain.trail.repository.TrailEdgeRepository;
+import com.orda.backend.domain.trail.service.TrailNearbyService;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,17 +60,34 @@ public class HikingService {
     private final GpsTrackProcessor gpsTrackProcessor;
     private final ElevationResolver elevationResolver;
 
+    private final TrailNearbyService trailNearbyService;
+    private final TrailEdgeRepository trailEdgeRepository;
+    private final SummitPointRepository summitPointRepository;
+
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
+
+    private static final double NEARBY_SUMMIT_RADIUS_M = 3000.0;
+
+    @Value("${hiking.trail-guard.enabled:false}")
+    private boolean trailGuardEnabled;
 
     @Transactional
     public HikingStartResponse startHiking(HikingStartRequest request) {
+        if (trailGuardEnabled) {
+            validateNearTrail(request.getLatitude(), request.getLongitude());
+        }
+
         HikingRecord session = HikingRecord.builder()
                 .userId(request.getUserId())
                 .startedAt(LocalDateTime.now())
                 .build();
 
         HikingRecord saved = hikingRecordRepository.save(session);
-        return new HikingStartResponse(saved.getId(), saved.getStartedAt());
+
+        List<NearbySummitItem> nearbySummits = findNearbySummits(
+                request.getLatitude(), request.getLongitude());
+
+        return new HikingStartResponse(saved.getId(), saved.getStartedAt(), nearbySummits);
     }
 
     @Transactional
@@ -202,6 +225,42 @@ public class HikingService {
                 .toList();
 
         return GeoJsonFeatureCollectionResponse.of(features);
+    }
+
+    private List<NearbySummitItem> findNearbySummits(Double latitude, Double longitude) {
+        if (latitude == null || longitude == null) {
+            return Collections.emptyList();
+        }
+
+        List<String> summitIds = trailEdgeRepository.findDistinctSummitIdsWithinRadius(
+                longitude, latitude, NEARBY_SUMMIT_RADIUS_M);
+
+        if (summitIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return summitPointRepository.findByIdIn(summitIds).stream()
+                .map(sp -> NearbySummitItem.builder()
+                        .summitId(sp.getId())
+                        .summitName(sp.getName())
+                        .latitude(sp.getGeom().getY())
+                        .longitude(sp.getGeom().getX())
+                        .elevationM(sp.getElevationM())
+                        .build())
+                .toList();
+    }
+
+    private void validateNearTrail(Double latitude, Double longitude) {
+        if (latitude == null || longitude == null) {
+            throw new IllegalArgumentException("등산 시작 위치 정보가 필요합니다.");
+        }
+
+        TrailNearbyResponse result = trailNearbyService.checkNearby(latitude, longitude);
+
+        if (!result.isNearTrail()) {
+            throw new IllegalArgumentException(
+                    "등산로 근처에서 시작해주세요. (반경 100m 이내)");
+        }
     }
 
     private List<VerifiedSummitItem> buildVerifiedSummits(HikingRecord record) {
