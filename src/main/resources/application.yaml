@@ -43,6 +43,6 @@ kakao:
   client-id: ${KAKAO_CLIENT_ID}
   redirect-uri: ${KAKAO_REDIRECT_URI}
 
-  hiking:
-    trail-guard:
-      enabled: true
+hiking:
+  trail-guard:
+    enabled: true
