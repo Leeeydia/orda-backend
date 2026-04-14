@@ -62,6 +62,28 @@ public interface TrailEdgeRepository extends JpaRepository<TrailEdge, String> {
             @Param("maxLat") double maxLat
     );
 
+    // 산 좌표 기반 반경 필터링 쿼리 추가
+    @Query(value = """
+        SELECT
+            edge_id,
+            difficulty,
+            difficulty_score,
+            ST_AsGeoJSON(geom)::text AS geom_json
+        FROM trail_edges
+        WHERE geom IS NOT NULL
+          AND difficulty IS NOT NULL
+          AND ST_DWithin(
+              geom::geography,
+              ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
+              :radiusM
+          )
+        """, nativeQuery = true)
+    List<Object[]> findEdgesWithGeomByRadius(
+            @Param("lat") double lat,
+            @Param("lng") double lng,
+            @Param("radiusM") double radiusM
+    );
+
     // ── GPS 스냅용 ────────────────────────────────────────────
     @Query(value = """
             SELECT

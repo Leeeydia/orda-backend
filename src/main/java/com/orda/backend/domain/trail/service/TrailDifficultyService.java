@@ -58,6 +58,14 @@ public class TrailDifficultyService {
         return buildFeatureCollection(rows);
     }
 
+    // 산 좌표 기반 반경 필터링 메서드 추가
+    public GeoJsonFeatureCollectionResponse getDifficultyMapByMountain(
+            double lat, double lng, double radiusKm) {
+        double radiusM = radiusKm * 1000;
+        List<Object[]> rows = trailEdgeRepository.findEdgesWithGeomByRadius(lat, lng, radiusM);
+        return buildFeatureCollection(rows);
+    }
+
     private GeoJsonFeatureCollectionResponse buildFeatureCollection(List<Object[]> rows) {
         List<GeoJsonFeatureResponse> features = new ArrayList<>();
 
