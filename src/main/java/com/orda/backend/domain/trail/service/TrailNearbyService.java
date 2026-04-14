@@ -21,7 +21,7 @@ public class TrailNearbyService {
                 trailEdgeRepository.findClosestPoint(lng, lat, CHECK_RADIUS_M);
 
         if (result.isEmpty()) {
-            return new TrailNearbyResponse(false, -1);
+            return new TrailNearbyResponse(false, null);
         }
 
         return new TrailNearbyResponse(true, result.get().getDistanceM());

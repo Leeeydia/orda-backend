@@ -8,5 +8,5 @@ import lombok.Getter;
 public class TrailNearbyResponse {
 
     private final boolean nearTrail;
-    private final double distanceM;
+    private final Double distanceM;
 }
