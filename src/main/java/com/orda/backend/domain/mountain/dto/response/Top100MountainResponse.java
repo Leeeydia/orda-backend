@@ -4,6 +4,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+import java.util.List;
+
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -15,4 +17,5 @@ public class Top100MountainResponse {
     private String feature;
     private String latitude;
     private String longitude;
+    private List<String> edgeIds;
 }

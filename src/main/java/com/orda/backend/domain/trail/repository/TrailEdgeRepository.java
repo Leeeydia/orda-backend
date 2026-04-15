@@ -84,6 +84,20 @@ public interface TrailEdgeRepository extends JpaRepository<TrailEdge, String> {
             @Param("radiusM") double radiusM
     );
 
+    // edgeIds 목록 기반 난이도 지도 조회 쿼리 추가
+    @Query(value = """
+        SELECT
+            edge_id,
+            difficulty,
+            difficulty_score,
+            ST_AsGeoJSON(geom)::text AS geom_json
+        FROM trail_edges
+        WHERE edge_id = ANY(:edgeIds)
+          AND geom IS NOT NULL
+          AND difficulty IS NOT NULL
+        """, nativeQuery = true)
+    List<Object[]> findEdgesWithGeomByEdgeIds(@Param("edgeIds") String[] edgeIds);
+
     // ── GPS 스냅용 ────────────────────────────────────────────
     @Query(value = """
             SELECT

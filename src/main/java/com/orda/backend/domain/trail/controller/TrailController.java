@@ -101,4 +101,17 @@ public class TrailController {
                 ApiResponse.success("산 기준 난이도 지도 조회 성공",
                         trailDifficultyService.getDifficultyMapByMountain(lat, lng, radiusKm)));
     }
+
+    // edgeIds 목록 기반 난이도 지도 조회 엔드포인트 추가
+    @GetMapping("/difficulty/map/edges")
+    public ResponseEntity<ApiResponse<GeoJsonFeatureCollectionResponse>> getDifficultyMapByEdgeIds(
+            @RequestParam List<String> edgeIds) {
+        if (edgeIds == null || edgeIds.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("edgeIds가 비어있습니다."));
+        }
+        return ResponseEntity.ok(
+                ApiResponse.success("edgeIds 기반 난이도 지도 조회 성공",
+                        trailDifficultyService.getDifficultyMapByEdgeIds(edgeIds)));
+    }
 }
