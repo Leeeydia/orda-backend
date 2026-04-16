@@ -83,6 +83,19 @@ public class TrailController {
                         trailDifficultyService.getDifficultyMapByBbox(minLng, minLat, maxLng, maxLat)));
     }
 
+    // edgeIds 목록 기반 난이도 지도 조회 엔드포인트 추가
+    @GetMapping("/difficulty/map/edges")
+    public ResponseEntity<ApiResponse<GeoJsonFeatureCollectionResponse>> getDifficultyMapByEdgeIds(
+            @RequestParam List<String> edgeIds) {
+        if (edgeIds == null || edgeIds.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("edgeIds가 비어있습니다."));
+        }
+        return ResponseEntity.ok(
+                ApiResponse.success("edgeIds 기반 난이도 지도 조회 성공",
+                        trailDifficultyService.getDifficultyMapByEdgeIds(edgeIds)));
+    }
+
     @GetMapping("/check-nearby")
     public ResponseEntity<ApiResponse<TrailNearbyResponse>> checkNearby(
             @RequestParam double lat,
