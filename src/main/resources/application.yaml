@@ -46,3 +46,10 @@ kakao:
 hiking:
   trail-guard:
     enabled: true
+
+openai:
+  api-key: ${OPENAI_API_KEY}
+  model: gpt-4o-mini
+
+summit:
+  photo-upload-dir: uploads/summit-photos
