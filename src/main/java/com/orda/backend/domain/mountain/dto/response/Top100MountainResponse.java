@@ -12,10 +12,10 @@ import java.util.List;
 public class Top100MountainResponse {
     private String name;
     private String location;
-    private String height;
+    private Double height;
     private String difficulty;
     private String feature;
-    private String latitude;
-    private String longitude;
+    private Double latitude;
+    private Double longitude;
     private List<String> edgeIds;
 }
