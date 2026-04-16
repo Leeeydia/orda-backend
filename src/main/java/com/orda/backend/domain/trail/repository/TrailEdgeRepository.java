@@ -99,4 +99,22 @@ public interface TrailEdgeRepository extends JpaRepository<TrailEdge, String> {
             @Param("lat") double lat,
             @Param("radiusM") double radiusM
     );
+
+    // ── 반경 내 등산로들의 distinct nearestSummitId 조회 ──────
+    @Query(value = """
+            SELECT DISTINCT e.nearest_summit_id
+            FROM trail_edges e
+            WHERE e.nearest_summit_id IS NOT NULL
+              AND e.geom IS NOT NULL
+              AND ST_DWithin(
+                  e.geom::geography,
+                  ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
+                  :radiusM
+              )
+            """, nativeQuery = true)
+    List<String> findDistinctSummitIdsWithinRadius(
+            @Param("lon") double lon,
+            @Param("lat") double lat,
+            @Param("radiusM") double radiusM
+    );
 }
