@@ -22,7 +22,6 @@ public class TrailController {
     private static final double KR_MAX_LNG = 140.0;
     private static final double KR_MIN_LAT = 30.0;
     private static final double KR_MAX_LAT = 45.0;
-    private static final double MAX_RADIUS_KM = 20.0;
 
     @GetMapping("/difficulty")
     public ResponseEntity<ApiResponse<TrailDifficultyResponse>> getDifficulty(
@@ -79,27 +78,6 @@ public class TrailController {
         return ResponseEntity.ok(
                 ApiResponse.success("뷰포트 기반 난이도 지도 조회 성공",
                         trailDifficultyService.getDifficultyMapByBbox(minLng, minLat, maxLng, maxLat)));
-    }
-
-    // 산 좌표 기반 반경 난이도 지도 조회 엔드포인트 추가
-    @GetMapping("/difficulty/map/mountain")
-    public ResponseEntity<ApiResponse<GeoJsonFeatureCollectionResponse>> getDifficultyMapByMountain(
-            @RequestParam double lat,
-            @RequestParam double lng,
-            @RequestParam(defaultValue = "5.0") double radiusKm) {
-
-        if (lat < KR_MIN_LAT || lat > KR_MAX_LAT || lng < KR_MIN_LNG || lng > KR_MAX_LNG) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.fail("잘못된 좌표: 한국 범위를 벗어났습니다."));
-        }
-        if (radiusKm <= 0 || radiusKm > MAX_RADIUS_KM) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.fail("잘못된 반경: 0 초과 " + MAX_RADIUS_KM + "km 이하여야 합니다."));
-        }
-
-        return ResponseEntity.ok(
-                ApiResponse.success("산 기준 난이도 지도 조회 성공",
-                        trailDifficultyService.getDifficultyMapByMountain(lat, lng, radiusKm)));
     }
 
     // edgeIds 목록 기반 난이도 지도 조회 엔드포인트 추가
