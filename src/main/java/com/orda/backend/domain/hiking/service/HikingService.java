@@ -3,7 +3,6 @@ package com.orda.backend.domain.hiking.service;
 import com.orda.backend.common.geojson.GeoJsonFeatureCollectionResponse;
 import com.orda.backend.common.geojson.GeoJsonFeatureResponse;
 import com.orda.backend.common.geojson.GeoJsonGeometryResponse;
-import com.orda.backend.common.projection.SnappedPointProjection;
 import com.orda.backend.domain.hiking.dto.request.GpsTrackRequest;
 import com.orda.backend.domain.hiking.dto.request.HikingStartRequest;
 import com.orda.backend.domain.hiking.dto.response.ElevationProfileResponse;
@@ -15,6 +14,7 @@ import com.orda.backend.domain.hiking.dto.response.ReplayPointResponse;
 import com.orda.backend.domain.hiking.dto.response.ReplayResponse;
 import com.orda.backend.domain.hiking.dto.response.ReplaySummaryResponse;
 import com.orda.backend.domain.hiking.dto.response.VerifiedSummitItem;
+import com.orda.backend.domain.hiking.dto.response.NearbySummitItem;
 import com.orda.backend.domain.hiking.entity.GpsTrack;
 import com.orda.backend.domain.hiking.entity.HikingRecord;
 import com.orda.backend.domain.hiking.model.CanonicalGpsPoint;
@@ -23,12 +23,12 @@ import com.orda.backend.domain.hiking.repository.GpsTrackRepository;
 import com.orda.backend.domain.hiking.repository.HikingRecordRepository;
 import com.orda.backend.domain.stats.entity.UserStats;
 import com.orda.backend.domain.stats.repository.UserStatsRepository;
-import com.orda.backend.domain.summit.entity.SummitPoint;
 import com.orda.backend.domain.summit.model.SessionVerifiedSummit;
 import com.orda.backend.domain.summit.repository.SummitPointRepository;
 import com.orda.backend.domain.summit.service.SummitService;
-import com.orda.backend.domain.hiking.dto.response.NearbySummitItem;
+import com.orda.backend.domain.trail.dto.response.TrailNearbyResponse;
 import com.orda.backend.domain.trail.repository.TrailEdgeRepository;
+import com.orda.backend.domain.trail.service.TrailNearbyService;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -43,7 +43,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -62,12 +61,12 @@ public class HikingService {
     private final GpsTrackProcessor gpsTrackProcessor;
     private final ElevationResolver elevationResolver;
 
+    private final TrailNearbyService trailNearbyService;
     private final TrailEdgeRepository trailEdgeRepository;
     private final SummitPointRepository summitPointRepository;
 
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
-    private static final double TRAIL_GUARD_RADIUS_M = 100.0;
     private static final double NEARBY_SUMMIT_RADIUS_M = 3000.0;
 
     @Value("${hiking.trail-guard.enabled:false}")
@@ -262,12 +261,11 @@ public class HikingService {
             throw new IllegalArgumentException("등산 시작 위치 정보가 필요합니다.");
         }
 
-        Optional<SnappedPointProjection> result =
-                trailEdgeRepository.findClosestPoint(longitude, latitude, TRAIL_GUARD_RADIUS_M);
+        TrailNearbyResponse result = trailNearbyService.checkNearby(latitude, longitude);
 
-        if (result.isEmpty()) {
+        if (!result.isNearTrail()) {
             throw new IllegalArgumentException(
-                    "등산로 근처에서 시작해주세요. (반경 " + (int) TRAIL_GUARD_RADIUS_M + "m 이내)");
+                    "등산로 근처에서 시작해주세요. (반경 100m 이내)");
         }
     }
 
