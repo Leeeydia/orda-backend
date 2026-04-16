@@ -6,6 +6,7 @@ import com.orda.backend.common.geojson.GeoJsonGeometryResponse;
 import com.orda.backend.domain.hiking.dto.request.GpsTrackRequest;
 import com.orda.backend.domain.hiking.dto.request.HikingStartRequest;
 import com.orda.backend.domain.hiking.dto.response.ElevationProfileResponse;
+import com.orda.backend.domain.hiking.dto.response.GpsTrackSaveResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingEndResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingSessionResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingStartResponse;
@@ -131,7 +132,7 @@ public class HikingService {
     }
 
     @Transactional
-    public void saveGpsTrack(Long sessionId, GpsTrackRequest request) {
+    public GpsTrackSaveResponse saveGpsTrack(Long sessionId, GpsTrackRequest request) {
         if (!hikingRecordRepository.existsById(sessionId)) {
             throw new IllegalArgumentException("세션을 찾을 수 없습니다: " + sessionId);
         }
@@ -163,6 +164,11 @@ public class HikingService {
                 .build();
 
         gpsTrackRepository.save(track);
+
+        return new GpsTrackSaveResponse(
+                canonical.getCanonicalElevationM(),
+                canonical.getElevationSource().name()
+        );
     }
 
     public ElevationProfileResponse getElevationProfile(Long sessionId) {

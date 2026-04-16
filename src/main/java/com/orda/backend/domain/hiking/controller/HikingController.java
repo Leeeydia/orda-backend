@@ -5,6 +5,7 @@ import com.orda.backend.common.response.ApiResponse;
 import com.orda.backend.domain.hiking.dto.request.GpsTrackRequest;
 import com.orda.backend.domain.hiking.dto.request.HikingStartRequest;
 import com.orda.backend.domain.hiking.dto.response.ElevationProfileResponse;
+import com.orda.backend.domain.hiking.dto.response.GpsTrackSaveResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingEndResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingSessionResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingStartResponse;
@@ -46,12 +47,12 @@ public class HikingController {
     }
 
     @PostMapping("/{sessionId}/tracks")
-    public ResponseEntity<ApiResponse<Void>> saveGpsTrack(
+    public ResponseEntity<ApiResponse<GpsTrackSaveResponse>> saveGpsTrack(
             @PathVariable Long sessionId,
             @RequestBody GpsTrackRequest request) {
-        hikingService.saveGpsTrack(sessionId, request);
+        GpsTrackSaveResponse response = hikingService.saveGpsTrack(sessionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("GPS 저장 성공", null));
+                .body(ApiResponse.success("GPS 저장 성공", response));
     }
 
     @GetMapping("/{sessionId}/tracks")
