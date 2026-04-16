@@ -21,12 +21,13 @@ public class MountainService {
 
     @PostConstruct
     public void init() {
-        try {
-            ClassPathResource resource = new ClassPathResource("data/top100mountains.json");
-            InputStream inputStream = resource.getInputStream();
-            cachedMountains = objectMapper.readValue(inputStream, new TypeReference<List<Top100MountainResponse>>() {});
+        ClassPathResource resource = new ClassPathResource("data/top100mountains.json");
+        try (InputStream is = resource.getInputStream()) {
+            cachedMountains = List.copyOf(
+                    objectMapper.readValue(is, new TypeReference<>() {})
+            );
         } catch (IOException e) {
-            throw new RuntimeException("100대 명산 데이터 로딩 실패", e);
+            throw new IllegalStateException("100대 명산 데이터 로딩 실패", e);
         }
     }
 
