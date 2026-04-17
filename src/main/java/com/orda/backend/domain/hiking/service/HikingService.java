@@ -178,12 +178,10 @@ public class HikingService {
             gpsTrackRepository.save(track);
         } catch (DataIntegrityViolationException e) {
             // SELECT ~ INSERT 사이 race condition으로 중복 발생한 경우
-            GpsTrack duplicateTrack = gpsTrackRepository.findBySessionIdAndSequenceNum(
-                            sessionId, request.getSequenceNum())
-                    .orElseThrow(() -> e);
+            // 영속성 컨텍스트가 오염되므로 DB 재조회 없이 이미 계산한 canonical 값으로 응답
             return new GpsTrackSaveResponse(
-                    duplicateTrack.getCanonicalElevationM(),
-                    duplicateTrack.getElevationSource().name()
+                    canonical.getCanonicalElevationM(),
+                    canonical.getElevationSource().name()
             );
         }
 
