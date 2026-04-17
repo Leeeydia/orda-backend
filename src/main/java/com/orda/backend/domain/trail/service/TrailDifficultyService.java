@@ -58,6 +58,13 @@ public class TrailDifficultyService {
         return buildFeatureCollection(rows);
     }
 
+    // edgeIds 목록 기반 난이도 지도 조회 메서드 추가
+    public GeoJsonFeatureCollectionResponse getDifficultyMapByEdgeIds(List<String> edgeIds) {
+        String[] edgeIdArray = edgeIds.toArray(new String[0]);
+        List<Object[]> rows = trailEdgeRepository.findEdgesWithGeomByEdgeIds(edgeIdArray);
+        return buildFeatureCollection(rows);
+    }
+
     private GeoJsonFeatureCollectionResponse buildFeatureCollection(List<Object[]> rows) {
         List<GeoJsonFeatureResponse> features = new ArrayList<>();
 
