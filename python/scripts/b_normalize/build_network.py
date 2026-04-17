@@ -868,6 +868,10 @@ def merge_two_edges_through_node(
         edge2.get("source"),
     )
 
+    mountain_key1 = edge1.get("mountain_key")
+    mountain_key2 = edge2.get("mountain_key")
+    merged_mountain_key = mountain_key1 if mountain_key1 == mountain_key2 else (mountain_key1 or mountain_key2)
+
     return {
         "edge_id": new_edge_id,
         "trail_id": preferred_edge["trail_id"],
@@ -880,6 +884,7 @@ def merge_two_edges_through_node(
         "is_bidirectional": edge1["is_bidirectional"],
         "merge_status": "merged",
         "coords": merged_coords,
+        "mountain_key": merged_mountain_key,
 
         # 내부 비교용 메타데이터는 하나로 유지
         "source": preferred_edge.get("source"),
@@ -1017,6 +1022,14 @@ def prune_dangling_edges(
     네트워크와 연결되지 않은 짧은 엣지를 제거한다.
     완전 고립, 막다른 길
     """
+    def is_prunable(edge: dict) -> bool:
+        source = str(edge.get("source") or "").strip().upper()
+        is_official = edge.get("is_official") is True
+        # 공공/공식 데이터는 최대한 보존 (산 분리 후 단절되어도 제거하지 않음)
+        if source == "PUBLIC" or is_official:
+            return False
+        return True
+
     stats = {
         "isolated_removed_count": 0,
         "dangling_removed_count": 0,
@@ -1028,6 +1041,8 @@ def prune_dangling_edges(
     to_remove: list[str] = []
 
     for edge_id, edge in edges.items():
+        if not is_prunable(edge):
+            continue
         s_deg = len(node_to_edges.get(edge["start_node_id"], set()))
         e_deg = len(node_to_edges.get(edge["end_node_id"], set()))
         if s_deg == 1 and e_deg == 1 and edge["distance_m"] < isolated_min_m:
@@ -1044,6 +1059,8 @@ def prune_dangling_edges(
         to_remove = []
 
         for edge_id, edge in edges.items():
+            if not is_prunable(edge):
+                continue
             s_deg = len(node_to_edges.get(edge["start_node_id"], set()))
             e_deg = len(node_to_edges.get(edge["end_node_id"], set()))
             # 한쪽만 degree=1 이고 기준 거리 미만
@@ -1213,6 +1230,10 @@ def report_mixed_mountain_nodes(edges: dict[str, dict]) -> None:
 
     for node_id, edge_ids in node_to_edges.items():
         mountain_keys = {edges[eid].get("mountain_key") for eid in edge_ids}
+<<<<<<< Updated upstream
+=======
+        mountain_keys.discard(None)
+>>>>>>> Stashed changes
         if len(mountain_keys) > 1:
             mixed_count += 1
 
