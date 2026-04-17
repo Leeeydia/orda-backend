@@ -49,7 +49,7 @@ public class HikingController {
     @PostMapping("/{sessionId}/tracks")
     public ResponseEntity<ApiResponse<GpsTrackSaveResponse>> saveGpsTrack(
             @PathVariable Long sessionId,
-            @RequestBody GpsTrackRequest request) {
+            @Valid @RequestBody GpsTrackRequest request) {
         GpsTrackSaveResponse response = hikingService.saveGpsTrack(sessionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("GPS 저장 성공", response));

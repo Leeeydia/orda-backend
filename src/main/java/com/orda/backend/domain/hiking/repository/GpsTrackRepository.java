@@ -6,11 +6,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface GpsTrackRepository extends JpaRepository<GpsTrack, Long> {
 
-    @Query("SELECT COALESCE(MAX(g.sequenceNum), 0) FROM GpsTrack g WHERE g.sessionId = :sessionId")
-    int findMaxSequenceNum(@Param("sessionId") Long sessionId);
+    Optional<GpsTrack> findBySessionIdAndSequenceNum(
+            @Param("sessionId") Long sessionId,
+            @Param("sequenceNum") int sequenceNum);
 
     @Query("SELECT g FROM GpsTrack g WHERE g.sessionId = :sessionId ORDER BY g.sequenceNum ASC")
     List<GpsTrack> findBySessionIdOrderBySequenceNum(@Param("sessionId") Long sessionId);

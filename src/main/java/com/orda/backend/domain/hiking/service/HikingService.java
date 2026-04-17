@@ -34,6 +34,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +44,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -137,7 +139,16 @@ public class HikingService {
             throw new IllegalArgumentException("세션을 찾을 수 없습니다: " + sessionId);
         }
 
-        int nextSeq = gpsTrackRepository.findMaxSequenceNum(sessionId) + 1;
+        // 중복 요청인지 먼저 확인 (멱등성 보장)
+        Optional<GpsTrack> existing = gpsTrackRepository.findBySessionIdAndSequenceNum(
+                sessionId, request.getSequenceNum());
+        if (existing.isPresent()) {
+            GpsTrack existingTrack = existing.get();
+            return new GpsTrackSaveResponse(
+                    existingTrack.getCanonicalElevationM(),
+                    existingTrack.getElevationSource().name()
+            );
+        }
 
         CanonicalGpsPoint canonical = gpsTrackProcessor.process(
                 request.getLatitude(),
@@ -150,7 +161,7 @@ public class HikingService {
 
         GpsTrack track = GpsTrack.builder()
                 .sessionId(sessionId)
-                .sequenceNum(nextSeq)
+                .sequenceNum(request.getSequenceNum())
                 .rawLatitude(request.getLatitude())
                 .rawLongitude(request.getLongitude())
                 .rawElevationM(request.getElevationM())
@@ -163,7 +174,18 @@ public class HikingService {
                 .geom(geom)
                 .build();
 
-        gpsTrackRepository.save(track);
+        try {
+            gpsTrackRepository.save(track);
+        } catch (DataIntegrityViolationException e) {
+            // SELECT ~ INSERT 사이 race condition으로 중복 발생한 경우
+            GpsTrack duplicateTrack = gpsTrackRepository.findBySessionIdAndSequenceNum(
+                            sessionId, request.getSequenceNum())
+                    .orElseThrow(() -> e);
+            return new GpsTrackSaveResponse(
+                    duplicateTrack.getCanonicalElevationM(),
+                    duplicateTrack.getElevationSource().name()
+            );
+        }
 
         return new GpsTrackSaveResponse(
                 canonical.getCanonicalElevationM(),
