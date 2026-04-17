@@ -30,9 +30,6 @@ import com.orda.backend.domain.trail.dto.response.TrailNearbyResponse;
 import com.orda.backend.domain.trail.repository.TrailEdgeRepository;
 import com.orda.backend.domain.trail.service.TrailNearbyService;
 import lombok.RequiredArgsConstructor;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,7 +40,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -65,8 +61,6 @@ public class HikingService {
     private final TrailNearbyService trailNearbyService;
     private final TrailEdgeRepository trailEdgeRepository;
     private final SummitPointRepository summitPointRepository;
-
-    private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
     private static final double NEARBY_SUMMIT_RADIUS_M = 3000.0;
 
@@ -138,42 +132,38 @@ public class HikingService {
             throw new IllegalArgumentException("세션을 찾을 수 없습니다: " + sessionId);
         }
 
-        // 중복 요청인지 먼저 확인 (멱등성 보장)
-        Optional<GpsTrack> existing = gpsTrackRepository.findBySessionIdAndSequenceNum(
-                sessionId, request.getSequenceNum());
-        if (existing.isPresent()) {
-            GpsTrack existingTrack = existing.get();
-            return new GpsTrackSaveResponse(
-                    existingTrack.getCanonicalElevationM(),
-                    existingTrack.getElevationSource().name()
-            );
-        }
-
         CanonicalGpsPoint canonical = gpsTrackProcessor.process(
                 request.getLatitude(),
                 request.getLongitude()
         );
 
-        org.locationtech.jts.geom.Point geom = geometryFactory.createPoint(
-                new Coordinate(canonical.getSnappedLongitude(), canonical.getSnappedLatitude())
+        // INSERT ON CONFLICT DO NOTHING — 중복이면 무시, 원자적 처리
+        int inserted = gpsTrackRepository.insertOnConflictDoNothing(
+                sessionId,
+                request.getSequenceNum(),
+                request.getLatitude(),
+                request.getLongitude(),
+                request.getElevationM(),
+                canonical.getSnappedLatitude(),
+                canonical.getSnappedLongitude(),
+                canonical.getCanonicalElevationM(),
+                canonical.getElevationSource().name(),
+                request.getAccuracyM(),
+                LocalDateTime.now()
         );
 
-        GpsTrack track = GpsTrack.builder()
-                .sessionId(sessionId)
-                .sequenceNum(request.getSequenceNum())
-                .rawLatitude(request.getLatitude())
-                .rawLongitude(request.getLongitude())
-                .rawElevationM(request.getElevationM())
-                .snappedLatitude(canonical.getSnappedLatitude())
-                .snappedLongitude(canonical.getSnappedLongitude())
-                .canonicalElevationM(canonical.getCanonicalElevationM())
-                .elevationSource(canonical.getElevationSource())
-                .accuracyM(request.getAccuracyM())
-                .recordedAt(LocalDateTime.now())
-                .geom(geom)
-                .build();
-
-        gpsTrackRepository.save(track);
+        // 중복 요청인 경우 (inserted == 0) → 기존 저장된 row 기준으로 응답
+        if (inserted == 0) {
+            GpsTrack existingTrack = gpsTrackRepository.findBySessionIdAndSequenceNum(
+                            sessionId, request.getSequenceNum())
+                    .orElseThrow(() -> new IllegalStateException(
+                            "ON CONFLICT DO NOTHING 후 기존 row 조회 실패: sessionId=" + sessionId
+                                    + ", sequenceNum=" + request.getSequenceNum()));
+            return new GpsTrackSaveResponse(
+                    existingTrack.getCanonicalElevationM(),
+                    existingTrack.getElevationSource().name()
+            );
+        }
 
         return new GpsTrackSaveResponse(
                 canonical.getCanonicalElevationM(),
