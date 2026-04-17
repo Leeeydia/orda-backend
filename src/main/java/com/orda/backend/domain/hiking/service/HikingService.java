@@ -75,13 +75,13 @@ public class HikingService {
     private boolean trailGuardEnabled;
 
     @Transactional
-    public HikingStartResponse startHiking(HikingStartRequest request) {
+    public HikingStartResponse startHiking(Long userId, HikingStartRequest request) {
         if (trailGuardEnabled) {
             validateNearTrail(request.getLatitude(), request.getLongitude());
         }
 
         HikingRecord session = HikingRecord.builder()
-                .userId(request.getUserId())
+                .userId(userId)
                 .startedAt(LocalDateTime.now())
                 .build();
 
