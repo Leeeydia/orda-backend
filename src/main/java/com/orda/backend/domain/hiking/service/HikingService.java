@@ -34,7 +34,6 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -174,16 +173,7 @@ public class HikingService {
                 .geom(geom)
                 .build();
 
-        try {
-            gpsTrackRepository.save(track);
-        } catch (DataIntegrityViolationException e) {
-            // SELECT ~ INSERT 사이 race condition으로 중복 발생한 경우
-            // 영속성 컨텍스트가 오염되므로 DB 재조회 없이 이미 계산한 canonical 값으로 응답
-            return new GpsTrackSaveResponse(
-                    canonical.getCanonicalElevationM(),
-                    canonical.getElevationSource().name()
-            );
-        }
+        gpsTrackRepository.save(track);
 
         return new GpsTrackSaveResponse(
                 canonical.getCanonicalElevationM(),
