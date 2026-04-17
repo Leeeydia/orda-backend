@@ -30,6 +30,7 @@ PRUNE_MAX_ITERATIONS = 50
 DUPLICATE_EDGE_LENGTH_TOLERANCE_M = 5.0
 MAX_EDGE_LENGTH_M = 50_000
 
+
 # =========================================================
 # 2. 공통 함수
 # =========================================================
@@ -102,6 +103,7 @@ def make_line_key(
     # 같은 좌표라도 다른 산(혹은 산 식별 불가 그룹)은 다른 등산로로 취급
     return mountain_key, key
 
+
 def make_node_pair_key(
         start_node_id: str,
         end_node_id: str,
@@ -111,11 +113,13 @@ def make_node_pair_key(
         return tuple(sorted([start_node_id, end_node_id]))
     return start_node_id, end_node_id, "directed"
 
+
 def calculate_length_m(coords: list[list[float]]) -> float:
     lons = [c[0] for c in coords]
     lats = [c[1] for c in coords]
     length = GEOD.line_length(lons, lats)
     return round(abs(length), 1)
+
 
 def split_to_lines(geometry: dict | None) -> list[list[list[float]]]:
     """
@@ -134,6 +138,7 @@ def split_to_lines(geometry: dict | None) -> list[list[list[float]]]:
         return coords
 
     return []
+
 
 def split_edge_coords_by_existing_nodes(
         coords: list[list[float]],
@@ -162,6 +167,7 @@ def split_edge_coords_by_existing_nodes(
 
     return segments
 
+
 def collect_all_intersection_coords(
         edges: dict[str, dict]
 ) -> set[tuple[float, float, str | None]]:
@@ -185,6 +191,7 @@ def collect_all_intersection_coords(
 
     return intersection_coords
 
+
 def split_edges_at_existing_nodes(
         edges: dict[str, dict],
         registry: NodeRegistry,
@@ -202,7 +209,11 @@ def split_edges_at_existing_nodes(
 
     for edge_id in sorted(edges.keys()):
         edge = edges[edge_id]
-        coords_parts = split_edge_coords_by_existing_nodes(edge["coords"], registry, edge.get("mountain_key"))
+        coords_parts = split_edge_coords_by_existing_nodes(
+            edge["coords"],
+            registry,
+            edge.get("mountain_key")
+        )
 
         if not coords_parts:
             continue
@@ -235,7 +246,6 @@ def split_edges_at_existing_nodes(
                 "merge_status": edge["merge_status"],
                 "coords": part_coords,
                 "mountain_key": edge.get("mountain_key"),
-
                 # 내부 비교용 메타데이터 유지
                 "source": edge.get("source"),
                 "source_ref": edge.get("source_ref"),
@@ -268,6 +278,7 @@ def dedupe_consecutive_coords(coords: list[list[float]]) -> list[list[float]]:
         if make_point_key(coord) != make_point_key(result[-1]):
             result.append(coord)
     return result
+
 
 def is_effectively_duplicate_edge(
         existing_edge: dict,
@@ -467,7 +478,6 @@ def merge_duplicate_edge_metadata(
     existing_edge["source_segment_orders"] = sorted(merged_orders)
 
 
-
 # =========================================================
 # 3. 노드 레지스트리
 # =========================================================
@@ -493,6 +503,7 @@ class NodeRegistry:
     def get_node_id_by_coord(self, coord: list[float], mountain_key: str | None = None) -> str | None:
         key = (*make_point_key(coord), mountain_key)
         return self._key_to_id.get(key)
+
 
 # =========================================================
 # 4. 입력 정규화
@@ -645,7 +656,6 @@ def build_initial_graph(
             "merge_status": "cleaned",
             "coords": coords,
             "mountain_key": mountain_key,
-
             # 내부 비교용 메타데이터 (surface는 최종 output에도 포함)
             "source": segment["source"],
             "source_ref": segment["source_ref"],
@@ -885,7 +895,6 @@ def merge_two_edges_through_node(
         "merge_status": "merged",
         "coords": merged_coords,
         "mountain_key": merged_mountain_key,
-
         # 내부 비교용 메타데이터는 하나로 유지
         "source": preferred_edge.get("source"),
         "source_ref": preferred_edge.get("source_ref"),
@@ -1007,6 +1016,7 @@ def collapse_pass_through_nodes(
                 in_queue.add(neighbor)
 
     return edges, stats
+
 
 # =========================================================
 # 7. Dangling 엣지 제거
@@ -1230,15 +1240,13 @@ def report_mixed_mountain_nodes(edges: dict[str, dict]) -> None:
 
     for node_id, edge_ids in node_to_edges.items():
         mountain_keys = {edges[eid].get("mountain_key") for eid in edge_ids}
-<<<<<<< Updated upstream
-=======
         mountain_keys.discard(None)
->>>>>>> Stashed changes
         if len(mountain_keys) > 1:
             mixed_count += 1
 
     print("----- 산 코드 혼합 노드 점검 -----")
     print(f"서로 다른 mountain_key가 섞인 node 수: {mixed_count}")
+
 
 # =========================================================
 # 10. 실행
