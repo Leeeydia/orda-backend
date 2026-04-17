@@ -70,11 +70,37 @@ def make_point_key(coord: list[float]) -> tuple[float, float]:
     return c[0], c[1]
 
 
-def make_line_key(coords: list[list[float]], is_bidirectional: bool = True) -> tuple:
+def make_mountain_key(segment_or_edge: dict) -> str | None:
+    raw_tags = segment_or_edge.get("raw_tags") or {}
+    if isinstance(raw_tags, dict):
+        mntn_code = raw_tags.get("MNTN_CODE") or raw_tags.get("MNTN_ID")
+        if mntn_code is not None:
+            text = str(mntn_code).strip()
+            if text != "":
+                return f"code:{text}"
+
+    mountain_name = segment_or_edge.get("mountain_name")
+    if mountain_name is not None:
+        text = str(mountain_name).strip()
+        if text != "":
+            return f"name:{text}"
+
+    return None
+
+
+def make_line_key(
+        coords: list[list[float]],
+        is_bidirectional: bool = True,
+        mountain_key: str | None = None,
+) -> tuple:
     rounded = tuple(make_point_key(c) for c in coords)
     if is_bidirectional:
-        return min(rounded, tuple(reversed(rounded)))
-    return rounded
+        key = min(rounded, tuple(reversed(rounded)))
+    else:
+        key = rounded
+
+    # 같은 좌표라도 다른 산(혹은 산 식별 불가 그룹)은 다른 등산로로 취급
+    return mountain_key, key
 
 def make_node_pair_key(
         start_node_id: str,
@@ -112,6 +138,7 @@ def split_to_lines(geometry: dict | None) -> list[list[list[float]]]:
 def split_edge_coords_by_existing_nodes(
         coords: list[list[float]],
         registry: NodeRegistry,
+        mountain_key: str | None,
 ) -> list[list[list[float]]]:
 
     if len(coords) < 2:
@@ -120,7 +147,7 @@ def split_edge_coords_by_existing_nodes(
     split_indices = [0]
 
     for i in range(1, len(coords) - 1):
-        node_id = registry.get_node_id_by_coord(coords[i])
+        node_id = registry.get_node_id_by_coord(coords[i], mountain_key)
         if node_id is not None:
             split_indices.append(i)
 
@@ -137,21 +164,24 @@ def split_edge_coords_by_existing_nodes(
 
 def collect_all_intersection_coords(
         edges: dict[str, dict]
-) -> set[tuple[float, float]]:
+) -> set[tuple[float, float, str | None]]:
 
     # 모든 엣지의 끝점 좌표를 키로 수집
-    endpoint_keys: set[tuple[float, float]] = set()
+    endpoint_keys: set[tuple[float, float, str | None]] = set()
     for edge in edges.values():
-        endpoint_keys.add(make_point_key(edge["coords"][0]))
-        endpoint_keys.add(make_point_key(edge["coords"][-1]))
+        mountain_key = edge.get("mountain_key")
+        endpoint_keys.add((*make_point_key(edge["coords"][0]), mountain_key))
+        endpoint_keys.add((*make_point_key(edge["coords"][-1]), mountain_key))
 
     # 어떤 엣지의 중간점이 다른 엣지의 끝점과 일치하면 교차점
-    intersection_coords: set[tuple[float, float]] = set()
+    intersection_coords: set[tuple[float, float, str | None]] = set()
     for edge in edges.values():
+        mountain_key = edge.get("mountain_key")
         for coord in edge["coords"][1:-1]:
             key = make_point_key(coord)
-            if key in endpoint_keys:
-                intersection_coords.add(key)
+            composed = (*key, mountain_key)
+            if composed in endpoint_keys:
+                intersection_coords.add(composed)
 
     return intersection_coords
 
@@ -161,8 +191,8 @@ def split_edges_at_existing_nodes(
 ) -> tuple[dict[str, dict], dict]:
 
     intersection_coords = collect_all_intersection_coords(edges)
-    for key in intersection_coords:
-        registry.get_or_create(list(key))
+    for lon, lat, mountain_key in intersection_coords:
+        registry.get_or_create([lon, lat], mountain_key)
 
     new_edges: dict[str, dict] = {}
     next_edge_number = max((int(eid[1:]) for eid in edges), default=0) + 1
@@ -172,7 +202,7 @@ def split_edges_at_existing_nodes(
 
     for edge_id in sorted(edges.keys()):
         edge = edges[edge_id]
-        coords_parts = split_edge_coords_by_existing_nodes(edge["coords"], registry)
+        coords_parts = split_edge_coords_by_existing_nodes(edge["coords"], registry, edge.get("mountain_key"))
 
         if not coords_parts:
             continue
@@ -187,8 +217,9 @@ def split_edges_at_existing_nodes(
             if distance_m <= 0:
                 continue
 
-            start_node_id = registry.get_or_create(part_coords[0])
-            end_node_id = registry.get_or_create(part_coords[-1])
+            mountain_key = edge.get("mountain_key")
+            start_node_id = registry.get_or_create(part_coords[0], mountain_key)
+            end_node_id = registry.get_or_create(part_coords[-1], mountain_key)
 
             new_edge_id = f"E{next_edge_number:04d}"
             next_edge_number += 1
@@ -203,6 +234,7 @@ def split_edges_at_existing_nodes(
                 "is_bidirectional": edge["is_bidirectional"],
                 "merge_status": edge["merge_status"],
                 "coords": part_coords,
+                "mountain_key": edge.get("mountain_key"),
 
                 # 내부 비교용 메타데이터 유지
                 "source": edge.get("source"),
@@ -442,24 +474,24 @@ def merge_duplicate_edge_metadata(
 
 class NodeRegistry:
     def __init__(self) -> None:
-        self._key_to_id: dict[tuple[float, float], str] = {}
+        self._key_to_id: dict[tuple[float, float, str | None], str] = {}
         self._id_to_coord: dict[str, list[float]] = {}
         self._counter = 1
 
-    def get_or_create(self, coord: list[float]) -> str:
-        key = make_point_key(coord)
+    def get_or_create(self, coord: list[float], mountain_key: str | None = None) -> str:
+        key = (*make_point_key(coord), mountain_key)
         if key not in self._key_to_id:
             node_id = f"N{self._counter:04d}"
             self._counter += 1
             self._key_to_id[key] = node_id
-            self._id_to_coord[node_id] = list(key)
+            self._id_to_coord[node_id] = [key[0], key[1]]
         return self._key_to_id[key]
 
     def coord(self, node_id: str) -> list[float]:
         return self._id_to_coord[node_id]
 
-    def get_node_id_by_coord(self, coord: list[float]) -> str | None:
-        key = make_point_key(coord)
+    def get_node_id_by_coord(self, coord: list[float], mountain_key: str | None = None) -> str | None:
+        key = (*make_point_key(coord), mountain_key)
         return self._key_to_id.get(key)
 
 # =========================================================
@@ -511,6 +543,12 @@ def normalize_input_features(data: dict) -> tuple[list[dict], dict]:
 
             rounded_coords = [round_coord(c) for c in coords]
 
+            raw_tags = properties.get("raw_tags")
+            segment_mountain_key = make_mountain_key({
+                "raw_tags": raw_tags,
+                "mountain_name": properties.get("mountain_name"),
+            })
+
             normalized_segments.append({
                 "trail_id": trail_id,
                 "source": source,
@@ -522,6 +560,7 @@ def normalize_input_features(data: dict) -> tuple[list[dict], dict]:
                 "admin_region": properties.get("admin_region"),
                 "is_official": properties.get("is_official"),
                 "raw_tags": properties.get("raw_tags"),
+                "mountain_key": segment_mountain_key,
                 "is_bidirectional": properties.get("is_bidirectional", True),
                 "source_segment_order": segment_order,
                 "coords": rounded_coords,
@@ -561,7 +600,8 @@ def build_initial_graph(
             stats["invalid_zero_length"] += 1
             continue
 
-        line_key = make_line_key(coords, segment["is_bidirectional"])
+        mountain_key = segment.get("mountain_key")
+        line_key = make_line_key(coords, segment["is_bidirectional"], mountain_key=mountain_key)
         existing_line_edge = seen_edges_by_line_key.get(line_key)
         if existing_line_edge is not None:
             print(f"[중복 제거: 동일 좌표] trail_id={segment['trail_id']}, segment_order={segment['source_segment_order']}")
@@ -569,8 +609,8 @@ def build_initial_graph(
             stats["duplicate_removed_count"] += 1
             continue
 
-        start_node_id = registry.get_or_create(coords[0])
-        end_node_id = registry.get_or_create(coords[-1])
+        start_node_id = registry.get_or_create(coords[0], mountain_key)
+        end_node_id = registry.get_or_create(coords[-1], mountain_key)
 
         node_pair_key = make_node_pair_key(
             start_node_id,
@@ -604,6 +644,7 @@ def build_initial_graph(
             "is_bidirectional": segment["is_bidirectional"],
             "merge_status": "cleaned",
             "coords": coords,
+            "mountain_key": mountain_key,
 
             # 내부 비교용 메타데이터 (surface는 최종 output에도 포함)
             "source": segment["source"],
@@ -642,7 +683,7 @@ def deduplicate_edges_after_split(
     for edge_id in sorted(edges.keys()):
         edge = edges[edge_id]
 
-        line_key = make_line_key(edge["coords"], edge["is_bidirectional"])
+        line_key = make_line_key(edge["coords"], edge["is_bidirectional"], mountain_key=edge.get("mountain_key"))
         existing_line_edge = seen_edges_by_line_key.get(line_key)
         if existing_line_edge is not None:
             merge_duplicate_edge_metadata(existing_line_edge, edge)
@@ -1165,6 +1206,19 @@ def run_basic_qa(edge_features: list[dict], node_features: list[dict], registry:
     print(f"coords-노드 좌표 불일치 edge 수: {coord_mismatch_count}")
     print(f"비정상 장거리 edge 수 ({MAX_EDGE_LENGTH_M/1000:.0f}km 초과, 좌표 오류 의심): {abnormal_length_count}")
 
+
+def report_mixed_mountain_nodes(edges: dict[str, dict]) -> None:
+    node_to_edges = build_node_to_edges(edges)
+    mixed_count = 0
+
+    for node_id, edge_ids in node_to_edges.items():
+        mountain_keys = {edges[eid].get("mountain_key") for eid in edge_ids}
+        if len(mountain_keys) > 1:
+            mixed_count += 1
+
+    print("----- 산 코드 혼합 노드 점검 -----")
+    print(f"서로 다른 mountain_key가 섞인 node 수: {mixed_count}")
+
 # =========================================================
 # 10. 실행
 # =========================================================
@@ -1233,6 +1287,8 @@ def build_network() -> None:
     print(f"병합된 edge 생성 수 : {total_collapse_stats['merged_edge_count']}")
     print(f"완전 고립 엣지 ({PRUNE_ISOLATED_EDGE_MIN_M}m) 제거 수 : {total_prune_stats['isolated_removed_count']}")
     print(f"막다른 엣지 ({PRUNE_DANGLING_EDGE_MIN_M}m) 제거 수 : {total_prune_stats['dangling_removed_count']}")
+
+    report_mixed_mountain_nodes(edges)
 
     edge_features, node_features, final_stats = build_final_output_features(edges, registry)
 
