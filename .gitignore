@@ -43,6 +43,14 @@ Thumbs.db
 ### Spring Config ###
 /src/main/resources/application-secret.yml
 /src/main/resources/application-local.yml
+/src/main/resources/application-dev.yml
+/src/main/resources/application-prod.yml
+
+### Env files ###
+.env
+*.env
+*.env.*
+!.env.example
 
 ### Uploads ###
 uploads/ # 추가: 프로필 이미지 등 업로드 파일 제외

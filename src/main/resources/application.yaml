@@ -1,22 +1,16 @@
 spring:
   application:
     name: backend
-  profiles:
-    include: secret
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/orda
-    username: postgres
-    password: "0000"
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: none
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
     open-in-view: false
 
   servlet:
@@ -25,10 +19,10 @@ spring:
       max-request-size: 5MB
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 jwt:
-  secret: 'orda-secret-key-must-be-at-least-32-characters-long'
+  secret: ${JWT_SECRET}
   access-token-expiration: 1800000
   refresh-token-expiration: 604800000
 
@@ -40,8 +34,14 @@ dem:
   file-path: ${DEM_FILE_PATH:}
 
 kakao:
-  client-id: ${KAKAO_CLIENT_ID}
-  redirect-uri: ${KAKAO_REDIRECT_URI}
+  client-id: ${KAKAO_CLIENT_ID:}
+  redirect-uri: ${KAKAO_REDIRECT_URI:}
+
+openai:
+  api-key: ${OPENAI_API_KEY:}
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
 hiking:
   trail-guard:
