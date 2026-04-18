@@ -1,5 +1,6 @@
 package com.orda.backend.domain.user.service;
 
+import com.orda.backend.common.exception.BusinessException;
 import com.orda.backend.domain.hiking.entity.HikingRecord;
 import com.orda.backend.domain.hiking.repository.HikingRecordRepository;
 import com.orda.backend.domain.stats.repository.UserStatsRepository;
@@ -43,14 +44,14 @@ public class MyPageService {
     @Transactional(readOnly = true)
     public MyPageProfileResponse getProfile(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다"));
+                .orElseThrow(() -> new BusinessException("존재하지 않는 사용자입니다"));
         return MyPageProfileResponse.from(user);
     }
 
     @Transactional(readOnly = true)
     public MyPageStatsResponse getStats(Long userId) {
         userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다"));
+                .orElseThrow(() -> new BusinessException("존재하지 않는 사용자입니다"));
         return userStatsRepository.findByUserId(userId)
                 .map(MyPageStatsResponse::from)
                 .orElse(MyPageStatsResponse.empty());
@@ -59,7 +60,7 @@ public class MyPageService {
     @Transactional(readOnly = true)
     public List<MyPageHikingRecordResponse> getHikingRecords(Long userId) {
         userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다"));
+                .orElseThrow(() -> new BusinessException("존재하지 않는 사용자입니다"));
         List<HikingRecord> records = hikingRecordRepository.findByUserIdOrderByStartedAtDesc(userId);
         return records.stream()
                 .map(MyPageHikingRecordResponse::from)
@@ -70,7 +71,7 @@ public class MyPageService {
     @Transactional
     public String uploadProfileImage(Long userId, MultipartFile file) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다"));
+                .orElseThrow(() -> new BusinessException("존재하지 않는 사용자입니다"));
 
         validateFile(file);
         deleteExistingImage(user.getProfileImageUrl());
@@ -86,10 +87,10 @@ public class MyPageService {
     @Transactional
     public void deleteProfileImage(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다"));
+                .orElseThrow(() -> new BusinessException("존재하지 않는 사용자입니다"));
 
         if (user.getProfileImageUrl() == null) {
-            throw new IllegalArgumentException("삭제할 프로필 이미지가 없습니다");
+            throw new BusinessException("삭제할 프로필 이미지가 없습니다");
         }
 
         deleteExistingImage(user.getProfileImageUrl());
@@ -99,14 +100,14 @@ public class MyPageService {
     //  파일 크기 및 확장자 유효성 검사
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("파일이 없습니다");
+            throw new BusinessException("파일이 없습니다");
         }
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("파일 크기는 5MB 이하여야 합니다");
+            throw new BusinessException("파일 크기는 5MB 이하여야 합니다");
         }
         String extension = getExtension(file.getOriginalFilename());
         if (!ALLOWED_EXTENSIONS.contains(extension.toLowerCase())) {
-            throw new IllegalArgumentException("jpg, jpeg, png 파일만 업로드 가능합니다");
+            throw new BusinessException("jpg, jpeg, png 파일만 업로드 가능합니다");
         }
     }
 
@@ -141,7 +142,7 @@ public class MyPageService {
 
     private String getExtension(String fileName) {
         if (fileName == null || !fileName.contains(".")) {
-            throw new IllegalArgumentException("올바르지 않은 파일명입니다");
+            throw new BusinessException("올바르지 않은 파일명입니다");
         }
         return fileName.substring(fileName.lastIndexOf(".") + 1);
     }

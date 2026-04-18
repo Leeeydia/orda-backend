@@ -5,6 +5,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDateTime;
 
@@ -92,6 +93,12 @@ public class HikingRecord {
     private void validateNotFinished() {
         if (this.status == HikingStatus.COMPLETED || this.status == HikingStatus.ABANDONED) {
             throw new IllegalStateException("이미 종료된 등산 세션입니다. 현재 상태: " + this.status);
+        }
+    }
+
+    public void assertOwnedBy(Long userId) {
+        if (userId == null || !this.userId.equals(userId)) {
+            throw new AccessDeniedException("해당 등산 세션에 대한 접근 권한이 없습니다.");
         }
     }
 

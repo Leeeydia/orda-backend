@@ -1,5 +1,6 @@
 package com.orda.backend.domain.hiking.service;
 
+import com.orda.backend.common.exception.BusinessException;
 import com.orda.backend.domain.hiking.entity.GpsTrack;
 import com.orda.backend.domain.hiking.model.EnrichedTrackPoint;
 import org.springframework.stereotype.Component;
@@ -74,10 +75,10 @@ public class EnrichedTrackPointBuilder {
 
     private void validateTrack(GpsTrack track) {
         if (track.getGeom() == null) {
-            throw new IllegalArgumentException("GPS 좌표 정보가 없습니다. trackId=" + track.getTrackId());
+            throw new BusinessException("GPS 좌표 정보가 없습니다. trackId=" + track.getTrackId());
         }
         if (track.getSequenceNum() == null) {
-            throw new IllegalArgumentException("sequence 정보가 없습니다. trackId=" + track.getTrackId());
+            throw new BusinessException("sequence 정보가 없습니다. trackId=" + track.getTrackId());
         }
     }
 
