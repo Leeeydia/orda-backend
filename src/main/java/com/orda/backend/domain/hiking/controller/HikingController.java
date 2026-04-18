@@ -11,10 +11,12 @@ import com.orda.backend.domain.hiking.dto.response.HikingSessionResponse;
 import com.orda.backend.domain.hiking.dto.response.HikingStartResponse;
 import com.orda.backend.domain.hiking.dto.response.ReplayResponse;
 import com.orda.backend.domain.hiking.service.HikingService;
+import com.orda.backend.security.CustomUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -26,8 +28,9 @@ public class HikingController {
 
     @PostMapping("/start")
     public ResponseEntity<ApiResponse<HikingStartResponse>> startHiking(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody HikingStartRequest request) {
-        HikingStartResponse response = hikingService.startHiking(request);
+        HikingStartResponse response = hikingService.startHiking(userDetails.getUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("등산 시작 성공", response));
     }
