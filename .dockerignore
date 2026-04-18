@@ -1,0 +1,42 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Gradle
+.gradle
+build
+gradle/wrapper/dists
+
+# IDE
+.idea
+*.iml
+*.iws
+*.ipr
+.vscode
+out
+bin
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project
+docs
+python
+uploads
+*.md
+diff.txt
+dev_*.txt
+db.sql
+
+# Local secrets / profile config
+.env
+.env.*
+!.env.example
+src/main/resources/application-secret.yml
+src/main/resources/application-dev.yml
+src/main/resources/application-prod.yml
+
+# Tests (we skip tests in image build anyway)
+src/test
