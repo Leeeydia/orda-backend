@@ -53,7 +53,8 @@ Thumbs.db
 !.env.example
 
 ### Uploads ###
-uploads/ # 추가: 프로필 이미지 등 업로드 파일 제외
+# 프로필 이미지 등 업로드 파일 제외
+uploads/
 
 ### Python ###
 /python/venv/
