@@ -44,7 +44,7 @@ Thumbs.db
 /src/main/resources/application-secret.yml
 /src/main/resources/application-local.yml
 /src/main/resources/application-dev.yml
-/src/main/resources/application-prod.yml
+# application-prod.yml은 시크릿 미포함(env 참조만)이라 git 추적 — 운영 컨테이너에 포함 필요
 
 ### Env files ###
 .env

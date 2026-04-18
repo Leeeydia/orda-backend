@@ -36,7 +36,7 @@ db.sql
 !.env.example
 src/main/resources/application-secret.yml
 src/main/resources/application-dev.yml
-src/main/resources/application-prod.yml
+# application-prod.yml은 운영 프로파일 오버라이드용으로 이미지에 포함 필요
 
 # Tests (we skip tests in image build anyway)
 src/test
