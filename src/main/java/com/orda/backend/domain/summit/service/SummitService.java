@@ -1,5 +1,7 @@
 package com.orda.backend.domain.summit.service;
 
+import com.orda.backend.domain.hiking.entity.HikingRecord;
+import com.orda.backend.domain.hiking.repository.HikingRecordRepository;
 import com.orda.backend.domain.summit.dto.request.SummitVerifyRequest;
 import com.orda.backend.domain.summit.dto.response.SummitVerifyResponse;
 import com.orda.backend.domain.summit.entity.SummitPoint;
@@ -25,10 +27,15 @@ public class SummitService {
 
     private final SummitPointRepository summitPointRepository;
     private final SummitVerificationRepository summitVerificationRepository;
+    private final HikingRecordRepository hikingRecordRepository;
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
     @Transactional
-    public SummitVerifyResponse verifySummit(SummitVerifyRequest request) {
+    public SummitVerifyResponse verifySummit(Long userId, SummitVerifyRequest request) {
+        HikingRecord session = hikingRecordRepository.findById(request.getSessionId())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + request.getSessionId()));
+        session.assertOwnedBy(userId);
+
         NearestSummitResult nearest = summitPointRepository
                 .findNearestSummit(request.getLatitude(), request.getLongitude())
                 .orElseThrow(() -> new IllegalArgumentException("정상 데이터가 없습니다."));

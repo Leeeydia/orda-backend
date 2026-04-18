@@ -87,9 +87,8 @@ public class HikingService {
     }
 
     @Transactional
-    public HikingEndResponse endHiking(Long sessionId) {
-        HikingRecord session = hikingRecordRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + sessionId));
+    public HikingEndResponse endHiking(Long userId, Long sessionId) {
+        HikingRecord session = loadOwnedSession(userId, sessionId);
 
         LocalDateTime endedAt = LocalDateTime.now();
         session.complete(endedAt);
@@ -117,9 +116,8 @@ public class HikingService {
         return new HikingEndResponse(session.getId(), session.getEndedAt());
     }
 
-    public HikingSessionResponse getSession(Long sessionId) {
-        HikingRecord record = hikingRecordRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + sessionId));
+    public HikingSessionResponse getSession(Long userId, Long sessionId) {
+        HikingRecord record = loadOwnedSession(userId, sessionId);
 
         List<VerifiedSummitItem> verifiedSummits = buildVerifiedSummits(record);
 
@@ -127,10 +125,8 @@ public class HikingService {
     }
 
     @Transactional
-    public GpsTrackSaveResponse saveGpsTrack(Long sessionId, GpsTrackRequest request) {
-        if (!hikingRecordRepository.existsById(sessionId)) {
-            throw new IllegalArgumentException("세션을 찾을 수 없습니다: " + sessionId);
-        }
+    public GpsTrackSaveResponse saveGpsTrack(Long userId, Long sessionId, GpsTrackRequest request) {
+        loadOwnedSession(userId, sessionId);
 
         CanonicalGpsPoint canonical = gpsTrackProcessor.process(
                 request.getLatitude(),
@@ -171,9 +167,8 @@ public class HikingService {
         );
     }
 
-    public ElevationProfileResponse getElevationProfile(Long sessionId) {
-        HikingRecord record = hikingRecordRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + sessionId));
+    public ElevationProfileResponse getElevationProfile(Long userId, Long sessionId) {
+        HikingRecord record = loadOwnedSession(userId, sessionId);
 
         List<GpsTrack> tracks = gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId);
         List<EnrichedTrackPoint> enrichedPoints = enrichedTrackPointBuilder.build(tracks);
@@ -182,9 +177,8 @@ public class HikingService {
         return elevationProfileBuilder.build(record.getId(), resolvedPoints);
     }
 
-    public ReplayResponse getReplay(Long sessionId, Integer maxPoints, Integer targetDurationSeconds) {
-        HikingRecord record = hikingRecordRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + sessionId));
+    public ReplayResponse getReplay(Long userId, Long sessionId, Integer maxPoints, Integer targetDurationSeconds) {
+        HikingRecord record = loadOwnedSession(userId, sessionId);
 
         List<GpsTrack> tracks = gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId);
         validateReplayTracks(tracks, sessionId);
@@ -213,7 +207,9 @@ public class HikingService {
                 .build();
     }
 
-    public GeoJsonFeatureCollectionResponse getTracks(Long sessionId) {
+    public GeoJsonFeatureCollectionResponse getTracks(Long userId, Long sessionId) {
+        loadOwnedSession(userId, sessionId);
+
         List<GpsTrack> tracks = gpsTrackRepository.findBySessionIdOrderBySequenceNum(sessionId);
 
         List<GeoJsonFeatureResponse> features = tracks.stream()
@@ -305,5 +301,12 @@ public class HikingService {
         if (tracks == null || tracks.size() < 2) {
             throw new IllegalArgumentException("리플레이 생성을 위한 GPS 포인트가 부족합니다. sessionId=" + sessionId);
         }
+    }
+
+    private HikingRecord loadOwnedSession(Long userId, Long sessionId) {
+        HikingRecord session = hikingRecordRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + sessionId));
+        session.assertOwnedBy(userId);
+        return session;
     }
 }
