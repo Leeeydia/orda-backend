@@ -1,5 +1,6 @@
 package com.orda.backend.domain.hiking.service;
 
+import com.orda.backend.common.exception.BusinessException;
 import com.orda.backend.common.geojson.GeoJsonFeatureCollectionResponse;
 import com.orda.backend.common.geojson.GeoJsonFeatureResponse;
 import com.orda.backend.common.geojson.GeoJsonGeometryResponse;
@@ -254,13 +255,13 @@ public class HikingService {
 
     private void validateNearTrail(Double latitude, Double longitude) {
         if (latitude == null || longitude == null) {
-            throw new IllegalArgumentException("등산 시작 위치 정보가 필요합니다.");
+            throw new BusinessException("등산 시작 위치 정보가 필요합니다.");
         }
 
         TrailNearbyResponse result = trailNearbyService.checkNearby(latitude, longitude);
 
         if (!result.isNearTrail()) {
-            throw new IllegalArgumentException(
+            throw new BusinessException(
                     "등산로 근처에서 시작해주세요. (반경 100m 이내)");
         }
     }
@@ -299,13 +300,13 @@ public class HikingService {
 
     private void validateReplayTracks(List<GpsTrack> tracks, Long sessionId) {
         if (tracks == null || tracks.size() < 2) {
-            throw new IllegalArgumentException("리플레이 생성을 위한 GPS 포인트가 부족합니다. sessionId=" + sessionId);
+            throw new BusinessException("리플레이 생성을 위한 GPS 포인트가 부족합니다. sessionId=" + sessionId);
         }
     }
 
     private HikingRecord loadOwnedSession(Long userId, Long sessionId) {
         HikingRecord session = hikingRecordRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + sessionId));
+                .orElseThrow(() -> new BusinessException("존재하지 않는 등산 세션입니다. id=" + sessionId));
         session.assertOwnedBy(userId);
         return session;
     }

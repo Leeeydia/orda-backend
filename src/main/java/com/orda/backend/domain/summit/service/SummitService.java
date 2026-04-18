@@ -1,5 +1,6 @@
 package com.orda.backend.domain.summit.service;
 
+import com.orda.backend.common.exception.BusinessException;
 import com.orda.backend.domain.hiking.entity.HikingRecord;
 import com.orda.backend.domain.hiking.repository.HikingRecordRepository;
 import com.orda.backend.domain.summit.dto.request.SummitVerifyRequest;
@@ -33,12 +34,12 @@ public class SummitService {
     @Transactional
     public SummitVerifyResponse verifySummit(Long userId, SummitVerifyRequest request) {
         HikingRecord session = hikingRecordRepository.findById(request.getSessionId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 등산 세션입니다. id=" + request.getSessionId()));
+                .orElseThrow(() -> new BusinessException("존재하지 않는 등산 세션입니다. id=" + request.getSessionId()));
         session.assertOwnedBy(userId);
 
         NearestSummitResult nearest = summitPointRepository
                 .findNearestSummit(request.getLatitude(), request.getLongitude())
-                .orElseThrow(() -> new IllegalArgumentException("정상 데이터가 없습니다."));
+                .orElseThrow(() -> new BusinessException("정상 데이터가 없습니다."));
 
         boolean verified = nearest.getDistance_m() <= nearest.getRadius_m();
 
@@ -79,7 +80,7 @@ public class SummitService {
 
     private SessionVerifiedSummit toSessionVerifiedSummit(SummitVerification verification) {
         SummitPoint summitPoint = summitPointRepository.findById(verification.getSummitId())
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new BusinessException(
                         "정상 정보를 찾을 수 없습니다. summitId=" + verification.getSummitId()
                 ));
 

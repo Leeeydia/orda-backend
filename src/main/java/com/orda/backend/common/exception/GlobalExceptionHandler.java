@@ -17,12 +17,22 @@ import java.util.Map;
 public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException e) {
-        log.warn("잘못된 요청: {}", e.getMessage());
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
+        log.warn("비즈니스 예외: {}", e.getMessage());
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.fail(e.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException e) {
+        // 외부 라이브러리(Hibernate/Validator/JJWT 등)가 던지는 메시지에는 내부 SQL/필드명/스택이
+        // 섞일 수 있으므로 일반 메시지로 마스킹하고 상세는 로그에만 남긴다.
+        log.warn("잘못된 요청: {}", e.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.fail("잘못된 요청입니다."));
     }
 
     @ExceptionHandler(AccessDeniedException.class)

@@ -1,5 +1,6 @@
 package com.orda.backend.domain.user.service;
 
+import com.orda.backend.common.exception.BusinessException;
 import com.orda.backend.domain.user.dto.request.LoginRequest;
 import com.orda.backend.domain.user.dto.request.SignupRequest;
 import com.orda.backend.domain.user.dto.response.LoginResponse;
@@ -38,16 +39,16 @@ public class AuthService {
     @Transactional
     public void signup(SignupRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("이미 사용 중인 이메일입니다");
+            throw new BusinessException("이미 사용 중인 이메일입니다");
         }
         if (userRepository.existsByNickname(request.getNickname())) {
-            throw new IllegalArgumentException("이미 사용 중인 닉네임입니다");
+            throw new BusinessException("이미 사용 중인 닉네임입니다");
         }
         if (userRepository.existsByPhone(request.getPhone())) {
-            throw new IllegalArgumentException("이미 사용 중인 전화번호입니다");
+            throw new BusinessException("이미 사용 중인 전화번호입니다");
         }
         if (request.getPassword().equalsIgnoreCase(request.getEmail())) {
-            throw new IllegalArgumentException("비밀번호는 이메일과 동일할 수 없습니다");
+            throw new BusinessException("비밀번호는 이메일과 동일할 수 없습니다");
         }
 
         User user = User.builder()
@@ -65,10 +66,10 @@ public class AuthService {
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다"));
+                .orElseThrow(() -> new BusinessException("이메일 또는 비밀번호가 올바르지 않습니다"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다");
+            throw new BusinessException("이메일 또는 비밀번호가 올바르지 않습니다");
         }
 
         String token = jwtTokenProvider.generateAccessToken(user.getUserId(), user.getEmail());
@@ -83,7 +84,7 @@ public class AuthService {
         User user = userRepository.findByProviderAndKakaoId("kakao", kakaoUserInfo.kakaoId())
                 .orElseGet(() -> {
                     if (userRepository.existsByEmail(kakaoUserInfo.email())) {
-                        throw new IllegalArgumentException(
+                        throw new BusinessException(
                                 "동일한 이메일로 가입된 계정이 이미 존재합니다. 기존 방식으로 로그인해 주세요."
                         );
                     }
@@ -117,12 +118,12 @@ public class AuthService {
                     .bodyValue(params)
                     .retrieve()
                     .onStatus(status -> status.is4xxClientError(),
-                            res -> Mono.error(new IllegalArgumentException("유효하지 않은 카카오 인가 코드입니다")))
+                            res -> Mono.error(new BusinessException("유효하지 않은 카카오 인가 코드입니다")))
                     .onStatus(status -> status.is5xxServerError(),
                             res -> Mono.error(new IllegalStateException("카카오 서버 오류입니다")))
                     .bodyToMono(Map.class)
                     .block();
-        } catch (IllegalArgumentException | IllegalStateException e) {
+        } catch (BusinessException | IllegalStateException e) {
             throw e;
         } catch (Exception e) {
             throw new IllegalStateException("카카오 토큰 요청 중 오류가 발생했습니다");
@@ -143,12 +144,12 @@ public class AuthService {
                     .header("Authorization", "Bearer " + kakaoAccessToken)
                     .retrieve()
                     .onStatus(status -> status.is4xxClientError(),
-                            res -> Mono.error(new IllegalArgumentException("카카오 사용자 정보 조회에 실패했습니다")))
+                            res -> Mono.error(new BusinessException("카카오 사용자 정보 조회에 실패했습니다")))
                     .onStatus(status -> status.is5xxServerError(),
                             res -> Mono.error(new IllegalStateException("카카오 서버 오류입니다")))
                     .bodyToMono(Map.class)
                     .block();
-        } catch (IllegalArgumentException | IllegalStateException e) {
+        } catch (BusinessException | IllegalStateException e) {
             throw e;
         } catch (Exception e) {
             throw new IllegalStateException("카카오 사용자 정보 요청 중 오류가 발생했습니다");
@@ -163,7 +164,7 @@ public class AuthService {
         Map<?, ?> kakaoAccount = (Map<?, ?>) response.get("kakao_account");
         String email = (kakaoAccount != null) ? (String) kakaoAccount.get("email") : null;
         if (email == null) {
-            throw new IllegalArgumentException("카카오 계정에 이메일 제공 동의가 필요합니다");
+            throw new BusinessException("카카오 계정에 이메일 제공 동의가 필요합니다");
         }
 
         return new KakaoUserInfo(kakaoId, email);

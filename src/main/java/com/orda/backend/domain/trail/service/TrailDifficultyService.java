@@ -1,6 +1,7 @@
 package com.orda.backend.domain.trail.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.orda.backend.common.exception.BusinessException;
 import com.orda.backend.common.geojson.GeoJsonFeatureCollectionResponse;
 import com.orda.backend.common.geojson.GeoJsonFeatureResponse;
 import com.orda.backend.common.geojson.GeoJsonGeometryResponse;
@@ -23,7 +24,7 @@ public class TrailDifficultyService {
 
     public TrailDifficultyResponse getByEdgeId(String edgeId) {
         TrailEdge edge = trailEdgeRepository.findById(edgeId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 edgeId: " + edgeId));
+                .orElseThrow(() -> new BusinessException("존재하지 않는 edgeId: " + edgeId));
         return TrailDifficultyResponse.from(edge);
     }
 
