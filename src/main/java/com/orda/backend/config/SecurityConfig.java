@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -28,19 +29,16 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/hiking/**").permitAll()  // TODO: feat/auth 완료 후 제거
-                        .requestMatchers("/api/summit/**").permitAll()  // TODO: feat/auth 완료 후 제거
-                        .requestMatchers("/api/stats/**").permitAll()   // TODO: feat/auth 완료 후 제거
-                        .requestMatchers("/api/mypage/**").permitAll()  // TODO: feat/auth 완료 후 제거
-                        .requestMatchers("/api/settings/**").permitAll() // TODO: feat/auth 완료 후 제거
-                        .requestMatchers("/api/trails/**").permitAll()  // TODO: feat/auth 완료 후 제거
-                        .requestMatchers("/api/mountains/**").permitAll()  // 100대 명산 조회 허용
-                        .requestMatchers("/uploads/**").permitAll()
+                        // 공개 경로
+                        .requestMatchers("/api/auth/**").permitAll()           // 로그인/회원가입
+                        .requestMatchers("/api/mountains/**").permitAll()      // 100대 명산 조회
+                        .requestMatchers("/uploads/**").permitAll()            // 정적 리소스
+                        // 그 외 모든 API는 인증 필요
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(
