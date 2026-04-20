@@ -92,12 +92,19 @@ public class SummitService {
 
         boolean gpsInRange = nearest.getDistance_m() <= nearest.getRadius_m();
 
+        log.info("사진 인증 요청 - sessionId={}, 위치=({}, {}), 가까운 정상={}, 거리={}m, 반경={}m, GPS범위내={}",
+                sessionId, latitude, longitude, nearest.getName(),
+                Math.round(nearest.getDistance_m()), nearest.getRadius_m(), gpsInRange);
+
         // 2. AI 사진 분석
         Map<String, Object> aiResult = openAiVisionService.analyzeSummitPhoto(photo);
         boolean aiRecognized = Boolean.TRUE.equals(aiResult.get("recognized"));
         String aiSummitName = (String) aiResult.getOrDefault("summitName", "");
         String aiElevation = (String) aiResult.getOrDefault("elevation", "");
         String aiReason = (String) aiResult.getOrDefault("reason", "");
+
+        log.info("AI 분석 결과 - 인식={}, 산이름='{}', 고도='{}', 사유='{}'",
+                aiRecognized, aiSummitName, aiElevation, aiReason);
 
         // 3. AI 인식된 산 이름과 DB 정상 이름 매칭
         boolean nameMatched = !aiSummitName.isEmpty()
@@ -108,13 +115,27 @@ public class SummitService {
         // 4. 최종 인증 판단: GPS 반경 내 + AI 인식 성공 + 이름 매칭
         boolean verified = gpsInRange && aiRecognized && nameMatched;
 
-        // 5. 사진 저장
+        log.info("인증 판단 - gpsInRange={}, aiRecognized={}, nameMatched={}, 최종={}",
+                gpsInRange, aiRecognized, nameMatched, verified);
+
+        // 5. 실패 사유 구체화
+        if (!verified) {
+            if (!gpsInRange) {
+                aiReason = nearest.getName() + " 정상까지 약 " + Math.round(nearest.getDistance_m()) + "m 떨어져 있습니다";
+            } else if (!aiRecognized) {
+                aiReason = "정상석을 인식하지 못했습니다. 정상석이 잘 보이도록 다시 촬영해주세요";
+            } else if (!nameMatched) {
+                aiReason = "AI가 인식한 산(" + aiSummitName + ")과 현재 위치의 산(" + nearest.getName() + ")이 일치하지 않습니다";
+            }
+        }
+
+        // 6. 사진 저장
         String photoPath = null;
         if (photo != null && !photo.isEmpty()) {
             photoPath = savePhoto(photo, sessionId);
         }
 
-        // 6. 인증 성공 시 DB 저장
+        // 7. 인증 성공 시 DB 저장
         if (verified) {
             boolean alreadyVerified = summitVerificationRepository
                     .existsBySessionIdAndSummitId(sessionId, nearest.getSummit_id());

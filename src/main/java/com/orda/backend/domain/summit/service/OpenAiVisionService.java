@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Base64;
@@ -101,7 +102,7 @@ public class OpenAiVisionService {
      */
     private String resizeAndEncode(MultipartFile photo) throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        Thumbnails.of(photo.getInputStream())
+        Thumbnails.of(new ByteArrayInputStream(photo.getBytes()))
                 .size(512, 512)
                 .outputFormat("jpeg")
                 .outputQuality(0.8)
@@ -112,7 +113,6 @@ public class OpenAiVisionService {
     @SuppressWarnings("unchecked")
     private Map<String, Object> parseResponse(String responseBody) {
         try {
-            // Jackson으로 파싱
             com.fasterxml.jackson.databind.ObjectMapper mapper =
                     new com.fasterxml.jackson.databind.ObjectMapper();
             Map<String, Object> response = mapper.readValue(responseBody, Map.class);
@@ -123,7 +123,6 @@ public class OpenAiVisionService {
                     (Map<String, Object>) choices.get(0).get("message");
             String content = (String) message.get("content");
 
-            // JSON 블록 추출 (```json ... ``` 감싸져 있을 수 있음)
             String json = content;
             if (content.contains("```")) {
                 json = content.replaceAll("```json\\s*", "")
