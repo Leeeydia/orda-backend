@@ -17,10 +17,8 @@ WORKDIR /app
 RUN groupadd --system app && useradd --system --gid app app
 RUN mkdir -p /app/data/dem
 
-COPY --from=builder /app/build/libs/*.jar /app/app.jar
+COPY --from=builder --chown=app:app /app/build/libs/*.jar /app/app.jar
 COPY --chown=app:app python/data/raw/dem/nasadem/korea_dem.tif /app/data/dem/korea_dem.tif
-
-RUN chown app:app /app/app.jar
 
 ENV JAVA_OPTS="-Xmx400m -Xms200m -XX:+UseSerialGC"
 ENV SPRING_PROFILES_ACTIVE=prod

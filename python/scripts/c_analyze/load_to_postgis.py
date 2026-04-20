@@ -135,8 +135,6 @@ def reset_static_tables(cursor) -> None:
     - CASCADE를 사용하지 않아 연쇄 삭제를 방지한다.
     - FK를 고려해 child → parent 순서로 초기화한다.
     """
-    ensure_destructive_load_allowed()
-
     cursor.execute("TRUNCATE trail_edges RESTART IDENTITY")
     cursor.execute("TRUNCATE trail_nodes RESTART IDENTITY")
     cursor.execute("TRUNCATE summit_points RESTART IDENTITY")
@@ -371,6 +369,8 @@ def main() -> None:
     print("[PostGIS 적재] 시작...")
     print(f"  ORDA_ENV: {ORDA_ENV}")
     print(f"  ORDA_ALLOW_DESTRUCTIVE_LOAD: {ORDA_ALLOW_DESTRUCTIVE_LOAD}")
+
+    ensure_destructive_load_allowed()
 
     print("\n[1] GeoJSON 로딩")
     node_features = read_geojson_features(NODE_ELEVATION_PATH)
