@@ -23,12 +23,23 @@ Thumbs.db
 
 # Project
 docs
-python
 uploads
 *.md
 diff.txt
 dev_*.txt
 db.sql
+
+# Python
+python/**
+!python/data/
+python/data/**
+!python/data/raw/
+python/data/raw/**
+!python/data/raw/dem/
+python/data/raw/dem/**
+!python/data/raw/dem/nasadem/
+python/data/raw/dem/nasadem/**
+!python/data/raw/dem/nasadem/korea_dem.tif
 
 # Local secrets / profile config
 .env
