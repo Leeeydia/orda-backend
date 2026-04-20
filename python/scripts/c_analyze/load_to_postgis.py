@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from typing import Any
 
@@ -34,7 +35,17 @@ def validate_pg_identifier(value: str, label: str) -> str:
     return value
 
 
+def env_flag(name: str, default: bool = False) -> bool:
+    """환경변수를 bool로 해석한다."""
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
 POSTGIS_SCHEMA_SAFE = validate_pg_identifier(POSTGIS_SCHEMA, "POSTGIS_SCHEMA")
+ORDA_ENV = os.getenv("ORDA_ENV", "local").strip().lower()
+ORDA_ALLOW_DESTRUCTIVE_LOAD = env_flag("ORDA_ALLOW_DESTRUCTIVE_LOAD", False)
 
 
 def postgis_fn(name: str) -> str:
@@ -101,6 +112,36 @@ def ensure_required_tables(cursor) -> None:
         )
 
 
+def ensure_destructive_load_allowed() -> None:
+    """파괴적 적재가 허용된 환경인지 확인한다."""
+    if ORDA_ENV == "prod":
+        raise RuntimeError(
+            "ORDA_ENV=prod 환경에서는 파괴적 적재를 실행할 수 없습니다."
+        )
+
+    if not ORDA_ALLOW_DESTRUCTIVE_LOAD:
+        raise RuntimeError(
+            "파괴적 적재가 차단되었습니다. "
+            "실행하려면 ORDA_ALLOW_DESTRUCTIVE_LOAD=true 를 명시하세요."
+        )
+
+
+def reset_static_tables(cursor) -> None:
+    """
+    정적 테이블만 순차 초기화한다.
+
+    주의:
+    - summit_verifications 같은 사용자/서비스성 데이터는 건드리지 않는다.
+    - CASCADE를 사용하지 않아 연쇄 삭제를 방지한다.
+    - FK를 고려해 child → parent 순서로 초기화한다.
+    """
+    ensure_destructive_load_allowed()
+
+    cursor.execute("TRUNCATE trail_edges RESTART IDENTITY")
+    cursor.execute("TRUNCATE trail_nodes RESTART IDENTITY")
+    cursor.execute("TRUNCATE summit_points RESTART IDENTITY")
+
+
 def build_geom_expr(param_name: str = "geom") -> str:
     """GeoJSON 문자열을 geometry로 바꾸는 SQL 조각을 반환한다."""
     return (
@@ -114,7 +155,7 @@ def build_geom_expr(param_name: str = "geom") -> str:
 # ──────────────────────────────────────────────
 
 def load_nodes(cursor, features: list[dict[str, Any]]) -> int:
-    """node_with_elevation.geojson → trail_nodes 테이블에 배치 적재한다."""
+    """node_with_elevation.geojson → trail_nodes 테이블에 배치 적재 시도한다."""
     sql = """
           INSERT INTO trail_nodes (
               node_id, node_type, degree,
@@ -159,8 +200,52 @@ def load_nodes(cursor, features: list[dict[str, Any]]) -> int:
     return len(rows)
 
 
+def load_summits(cursor, features: list[dict[str, Any]]) -> int:
+    """summit_points.geojson → summit_points 테이블에 배치 적재 시도한다."""
+    sql = """
+          INSERT INTO summit_points (
+              summit_id, name, elevation_m,
+              source, radius_m,
+              geom
+          ) VALUES %s
+              ON CONFLICT (summit_id) DO NOTHING \
+          """
+
+    template = (
+        f"(%(summit_id)s, %(name)s, %(elevation_m)s, "
+        f"%(source)s, %(radius_m)s, {build_geom_expr('geom')})"
+    )
+
+    rows = []
+    for feat in features:
+        props = feat.get("properties", {})
+        geom = feat.get("geometry")
+
+        if not geom:
+            continue
+        if not props.get("summit_id"):
+            continue
+
+        rows.append(
+            {
+                "summit_id": props.get("summit_id"),
+                "name": props.get("name"),
+                "elevation_m": props.get("elevation_m"),
+                "source": props.get("source"),
+                "radius_m": props.get("radius_m"),
+                "geom": json.dumps(geom, ensure_ascii=False),
+            }
+        )
+
+    if not rows:
+        return 0
+
+    execute_values(cursor, sql, rows, template=template, page_size=1000)
+    return len(rows)
+
+
 def load_edges(cursor, features: list[dict[str, Any]]) -> int:
-    """final_trail_dataset.geojson → trail_edges 테이블에 배치 적재한다."""
+    """final_trail_dataset.geojson → trail_edges 테이블에 배치 적재 시도한다."""
     sql = """
           INSERT INTO trail_edges (
               edge_id, start_node_id, end_node_id,
@@ -205,50 +290,6 @@ def load_edges(cursor, features: list[dict[str, Any]]) -> int:
                 "surface": props.get("surface"),
                 "nearest_summit_id": props.get("nearest_summit_id"),
                 "qa_status": props.get("qa_status"),
-                "geom": json.dumps(geom, ensure_ascii=False),
-            }
-        )
-
-    if not rows:
-        return 0
-
-    execute_values(cursor, sql, rows, template=template, page_size=1000)
-    return len(rows)
-
-
-def load_summits(cursor, features: list[dict[str, Any]]) -> int:
-    """summit_points.geojson → summit_points 테이블에 배치 적재한다."""
-    sql = """
-          INSERT INTO summit_points (
-              summit_id, name, elevation_m,
-              source, radius_m,
-              geom
-          ) VALUES %s
-              ON CONFLICT (summit_id) DO NOTHING \
-          """
-
-    template = (
-        f"(%(summit_id)s, %(name)s, %(elevation_m)s, "
-        f"%(source)s, %(radius_m)s, {build_geom_expr('geom')})"
-    )
-
-    rows = []
-    for feat in features:
-        props = feat.get("properties", {})
-        geom = feat.get("geometry")
-
-        if not geom:
-            continue
-        if not props.get("summit_id"):
-            continue
-
-        rows.append(
-            {
-                "summit_id": props.get("summit_id"),
-                "name": props.get("name"),
-                "elevation_m": props.get("elevation_m"),
-                "source": props.get("source"),
-                "radius_m": props.get("radius_m"),
                 "geom": json.dumps(geom, ensure_ascii=False),
             }
         )
@@ -328,6 +369,8 @@ def verify_spatial(cursor) -> None:
 
 def main() -> None:
     print("[PostGIS 적재] 시작...")
+    print(f"  ORDA_ENV: {ORDA_ENV}")
+    print(f"  ORDA_ALLOW_DESTRUCTIVE_LOAD: {ORDA_ALLOW_DESTRUCTIVE_LOAD}")
 
     print("\n[1] GeoJSON 로딩")
     node_features = read_geojson_features(NODE_ELEVATION_PATH)
@@ -345,23 +388,18 @@ def main() -> None:
     try:
         ensure_required_tables(cursor)
 
-        print("  기존 데이터 초기화...")
+        print("  정적 테이블 초기화...")
+        reset_static_tables(cursor)
+        print("    trail 정적 테이블 초기화 완료")
 
-        if table_exists(cursor, "summit_verifications"):
-            cursor.execute("TRUNCATE summit_verifications RESTART IDENTITY")
-            print("    summit_verifications 초기화 완료")
+        node_attempt_count = load_nodes(cursor, node_features)
+        print(f"  trail_nodes 적재 시도: {node_attempt_count}건")
 
-        cursor.execute("TRUNCATE trail_edges, trail_nodes, summit_points RESTART IDENTITY CASCADE")
-        print("    trail 테이블 초기화 완료")
+        summit_attempt_count = load_summits(cursor, summit_features)
+        print(f"  summit_points 적재 시도: {summit_attempt_count}건")
 
-        node_count = load_nodes(cursor, node_features)
-        print(f"  trail_nodes 적재: {node_count}건")
-
-        edge_count = load_edges(cursor, edge_features)
-        print(f"  trail_edges 적재: {edge_count}건")
-
-        summit_count = load_summits(cursor, summit_features)
-        print(f"  summit_points 적재: {summit_count}건")
+        edge_attempt_count = load_edges(cursor, edge_features)
+        print(f"  trail_edges 적재 시도: {edge_attempt_count}건")
 
         verify_counts(cursor)
         verify_spatial(cursor)
