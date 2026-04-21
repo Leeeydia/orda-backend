@@ -91,7 +91,12 @@ public class SummitService {
     // ── 사진 + AI + GPS 통합 인증 ──
     @Transactional
     public SummitVerifyResponse verifySummitWithPhoto(
-            Long sessionId, Double latitude, Double longitude, MultipartFile photo) {
+            Long userId, Long sessionId, Double latitude, Double longitude, MultipartFile photo) {
+
+        // 세션 소유자 검증
+        HikingRecord session = hikingRecordRepository.findById(sessionId)
+                .orElseThrow(() -> new BusinessException("존재하지 않는 등산 세션입니다. id=" + sessionId));
+        session.assertOwnedBy(userId);
 
         // 1. GPS로 가장 가까운 정상 조회
         NearestSummitResult nearest = summitPointRepository
@@ -100,8 +105,8 @@ public class SummitService {
 
         boolean gpsInRange = nearest.getDistance_m() <= nearest.getRadius_m();
 
-        log.info("사진 인증 요청 - sessionId={}, 위치=({}, {}), 가까운 정상={}, 거리={}m, 반경={}m, GPS범위내={}",
-                sessionId, latitude, longitude, nearest.getName(),
+        log.info("사진 인증 요청 - sessionId={}, userId={}, 위치=({}, {}), 가까운 정상={}, 거리={}m, 반경={}m, GPS범위내={}",
+                sessionId, userId, latitude, longitude, nearest.getName(),
                 Math.round(nearest.getDistance_m()), nearest.getRadius_m(), gpsInRange);
 
         // 2. AI 사진 분석
@@ -137,14 +142,13 @@ public class SummitService {
             }
         }
 
-        // 6. 사진 저장
+        // 6. 인증 성공 시에만 사진 저장 + DB 저장
         String photoPath = null;
-        if (photo != null && !photo.isEmpty()) {
-            photoPath = savePhoto(photo, sessionId);
-        }
-
-        // 7. 인증 성공 시 DB 저장
         if (verified) {
+            if (photo != null && !photo.isEmpty()) {
+                photoPath = savePhoto(photo, sessionId);
+            }
+
             boolean alreadyVerified = summitVerificationRepository
                     .existsBySessionIdAndSummitId(sessionId, nearest.getSummit_id());
 
@@ -190,7 +194,8 @@ public class SummitService {
             Path filePath = uploadPath.resolve(filename);
             photo.transferTo(filePath);
 
-            return filePath.toString();
+            // 상대 경로 반환
+            return photoUploadDir + "/" + filename;
         } catch (IOException e) {
             log.error("사진 저장 실패", e);
             return null;

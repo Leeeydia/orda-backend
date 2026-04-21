@@ -26,6 +26,9 @@ public class OpenAiVisionService {
             @Value("${openai.api-key}") String apiKey,
             @Value("${openai.model}") String model
     ) {
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException("OPENAI_API_KEY 환경변수가 설정되지 않았습니다.");
+        }
         this.model = model;
         this.webClient = WebClient.builder()
                 .baseUrl("https://api.openai.com/v1")

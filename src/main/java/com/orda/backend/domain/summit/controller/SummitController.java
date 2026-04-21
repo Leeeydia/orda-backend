@@ -28,13 +28,14 @@ public class SummitController {
 
     @PostMapping("/verify/photo")
     public ResponseEntity<ApiResponse<SummitVerifyResponse>> verifySummitWithPhoto(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam("photo") MultipartFile photo,
             @RequestParam("sessionId") Long sessionId,
             @RequestParam("latitude") Double latitude,
             @RequestParam("longitude") Double longitude
     ) {
         SummitVerifyResponse response = summitService.verifySummitWithPhoto(
-                sessionId, latitude, longitude, photo
+                userDetails.getUserId(), sessionId, latitude, longitude, photo
         );
         return ResponseEntity.ok(ApiResponse.success("사진 인증 처리 완료", response));
     }
