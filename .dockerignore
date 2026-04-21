@@ -1,0 +1,53 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Gradle
+.gradle
+build
+gradle/wrapper/dists
+
+# IDE
+.idea
+*.iml
+*.iws
+*.ipr
+.vscode
+out
+bin
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project
+docs
+uploads
+*.md
+diff.txt
+dev_*.txt
+db.sql
+
+# Python
+python/**
+!python/data/
+python/data/**
+!python/data/raw/
+python/data/raw/**
+!python/data/raw/dem/
+python/data/raw/dem/**
+!python/data/raw/dem/nasadem/
+python/data/raw/dem/nasadem/**
+!python/data/raw/dem/nasadem/korea_dem.tif
+
+# Local secrets / profile config
+.env
+.env.*
+!.env.example
+src/main/resources/application-secret.yml
+src/main/resources/application-dev.yml
+# application-prod.yml은 운영 프로파일 오버라이드용으로 이미지에 포함 필요
+
+# Tests (we skip tests in image build anyway)
+src/test

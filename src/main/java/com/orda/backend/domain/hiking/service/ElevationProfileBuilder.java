@@ -1,5 +1,6 @@
 package com.orda.backend.domain.hiking.service;
 
+import com.orda.backend.common.exception.BusinessException;
 import com.orda.backend.domain.hiking.dto.response.ElevationProfilePointResponse;
 import com.orda.backend.domain.hiking.dto.response.ElevationProfileResponse;
 import com.orda.backend.domain.hiking.dto.response.ElevationProfileSummaryResponse;
@@ -18,7 +19,7 @@ public class ElevationProfileBuilder {
 
     public ElevationProfileResponse build(Long sessionId, List<EnrichedTrackPoint> points) {
         if (points == null || points.size() < 2) {
-            throw new IllegalArgumentException("고도 프로파일 생성을 위한 GPS 포인트가 부족합니다.");
+            throw new BusinessException("고도 프로파일 생성을 위한 GPS 포인트가 부족합니다.");
         }
 
         List<ElevationProfilePointResponse> responsePoints = new ArrayList<>();
@@ -69,7 +70,7 @@ public class ElevationProfileBuilder {
 
     private void validateSequence(EnrichedTrackPoint point) {
         if (point.getSequenceNum() == null) {
-            throw new IllegalArgumentException("sequence 정보가 없습니다.");
+            throw new BusinessException("sequence 정보가 없습니다.");
         }
     }
 }
