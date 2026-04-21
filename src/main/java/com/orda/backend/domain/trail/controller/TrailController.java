@@ -83,10 +83,23 @@ public class TrailController {
                         trailDifficultyService.getDifficultyMapByBbox(minLng, minLat, maxLng, maxLat)));
     }
 
-    // edgeIds 목록 기반 난이도 지도 조회 엔드포인트 추가
+    // edgeIds 목록 기반 난이도 지도 조회 엔드포인트 추가 (GET - 산 단건 클릭용)
     @GetMapping("/difficulty/map/edges")
     public ResponseEntity<ApiResponse<GeoJsonFeatureCollectionResponse>> getDifficultyMapByEdgeIds(
             @RequestParam List<String> edgeIds) {
+        if (edgeIds == null || edgeIds.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("edgeIds가 비어있습니다."));
+        }
+        return ResponseEntity.ok(
+                ApiResponse.success("edgeIds 기반 난이도 지도 조회 성공",
+                        trailDifficultyService.getDifficultyMapByEdgeIds(edgeIds)));
+    }
+
+    // edgeIds 목록 기반 난이도 지도 조회 엔드포인트 추가 (POST - 명산 전체 모드용, URL 길이 제한 우회)
+    @PostMapping("/difficulty/map/edges")
+    public ResponseEntity<ApiResponse<GeoJsonFeatureCollectionResponse>> getDifficultyMapByEdgeIdsPost(
+            @RequestBody List<String> edgeIds) {
         if (edgeIds == null || edgeIds.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.fail("edgeIds가 비어있습니다."));
