@@ -145,14 +145,14 @@ public class SummitService {
         // 6. 인증 성공 시에만 사진 저장 + DB 저장
         String photoPath = null;
         if (verified) {
-            if (photo != null && !photo.isEmpty()) {
-                photoPath = savePhoto(photo, sessionId);
-            }
-
             boolean alreadyVerified = summitVerificationRepository
                     .existsBySessionIdAndSummitId(sessionId, nearest.getSummit_id());
 
             if (!alreadyVerified) {
+                if (photo != null && !photo.isEmpty()) {
+                    photoPath = savePhoto(photo, sessionId);
+                }
+
                 Point userPoint = geometryFactory.createPoint(
                         new Coordinate(longitude, latitude)
                 );
