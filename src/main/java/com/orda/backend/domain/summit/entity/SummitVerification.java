@@ -34,6 +34,9 @@ public class SummitVerification {
     @Column(name = "verification_method", nullable = false, length = 30)
     private String verificationMethod;
 
+    @Column(name = "photo_path", length = 500)
+    private String photoPath;
+
     @Column(name = "verified_at", nullable = false)
     private LocalDateTime verifiedAt;
 
@@ -41,11 +44,13 @@ public class SummitVerification {
     private Point geom;
 
     @Builder
-    public SummitVerification(Long sessionId, String summitId, Double distanceToSummitM, Point geom) {
+    public SummitVerification(Long sessionId, String summitId, Double distanceToSummitM,
+                              String verificationMethod, String photoPath, Point geom) {
         this.sessionId = sessionId;
         this.summitId = summitId;
         this.distanceToSummitM = distanceToSummitM;
-        this.verificationMethod = "gps";
+        this.verificationMethod = verificationMethod != null ? verificationMethod : "gps";
+        this.photoPath = photoPath;
         this.verifiedAt = LocalDateTime.now();
         this.geom = geom;
     }

@@ -10,4 +10,9 @@ public class SummitVerifyResponse {
     private String summitId;
     private String summitName;
     private Double distanceM;
+    private String verificationMethod;
+    private String photoPath;
+    private String aiRecognizedName;
+    private String aiRecognizedElevation;
+    private String aiReason;
 }
