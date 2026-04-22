@@ -2,21 +2,25 @@ import json
 import re
 import unicodedata
 import math
+from pathlib import Path
 
-GEOJSON_PATH = r"C:\Users\User\IdeaProjects\ORDA\backend\python\data\interim\b_output\trail_network_edges.geojson"
-TOP100_PATH = r"C:\Users\User\IdeaProjects\ORDA\backend\src\main\resources\data\top100mountains.json"
-OUTPUT_PATH = r"C:\Users\User\IdeaProjects\ORDA\backend\src\main\resources\data\top100mountains_remapped.json"
+# 스크립트 위치 기준 상대경로
+# 스크립트: python/scripts/c_analyze/remap_edgeids.py
+# REPO_ROOT: backend/
+BASE_DIR = Path(__file__).resolve().parent  # c_analyze/
+REPO_ROOT = BASE_DIR.parents[2]             # backend/
+
+GEOJSON_PATH = REPO_ROOT / "python" / "data" / "interim" / "b_output" / "trail_network_edges.geojson"
+TOP100_PATH = REPO_ROOT / "src" / "main" / "resources" / "data" / "top100mountains.json"
+OUTPUT_PATH = REPO_ROOT / "src" / "main" / "resources" / "data" / "top100mountains_remapped.json"
 
 MAX_DISTANCE_M = 30000
-
 
 def nfc(s):
     return unicodedata.normalize("NFC", s)
 
-
 def remove_parentheses(name):
     return re.sub(r"\([^)]*\)", "", name).strip()
-
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371000
@@ -24,7 +28,6 @@ def haversine(lat1, lon1, lat2, lon2):
     a = math.sin((math.radians(lat2 - lat1)) / 2) ** 2 + \
         math.cos(phi1) * math.cos(phi2) * math.sin((math.radians(lon2 - lon1)) / 2) ** 2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
 
 print("top100mountains.json 로딩...")
 with open(TOP100_PATH, encoding="utf-8") as f:
@@ -42,7 +45,6 @@ with open(GEOJSON_PATH, encoding="utf-8") as f:
     geojson = json.load(f)
 
 name_to_edge_ids = {}
-
 for feat in geojson["features"]:
     props = feat["properties"]
     raw_name = props.get("mountain_name")
@@ -58,11 +60,9 @@ for feat in geojson["features"]:
         continue
     avg_lon = sum(c[0] for c in coords) / len(coords)
     avg_lat = sum(c[1] for c in coords) / len(coords)
-
     candidates = base_name_index.get(base, [])
     if not candidates:
         continue
-
     best_name = None
     best_dist = float("inf")
     for canonical_name, lat, lon in candidates:
@@ -70,13 +70,11 @@ for feat in geojson["features"]:
         if dist < best_dist:
             best_dist = dist
             best_name = canonical_name
-
     if best_dist > MAX_DISTANCE_M:
         continue
-
     name_to_edge_ids.setdefault(best_name, set()).add(edge_id)
 
-print(f"매칭된 산 수: {len(name_to_edge_ids)}")
+print(f"매핑된 산: {len(name_to_edge_ids)}")
 
 result = []
 for m in mountains:
