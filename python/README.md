@@ -11,14 +11,15 @@ OSM·산림청 원본 데이터를 수집·정규화하고, DEM 고도 정보와
 2. [폴더 구조](#2-폴더-구조)
 3. [파이프라인 전체 흐름](#3-파이프라인-전체-흐름)
 4. [단계별 실행 방법](#4-단계별-실행-방법)
-   - [Stage A: 데이터 수집 및 병합](#stage-a-데이터-수집-및-병합)
-   - [Stage B: 네트워크 정규화](#stage-b-네트워크-정규화)
-   - [Stage C: 분석 및 속성 부착](#stage-c-분석-및-속성-부착)
-   - [(선택) DB 적재](#선택-db-적재)
+    - [Stage A: 데이터 수집 및 병합](#stage-a-데이터-수집-및-병합)
+    - [Stage B: 네트워크 정규화](#stage-b-네트워크-정규화)
+    - [Stage C: 분석 및 속성 부착](#stage-c-분석-및-속성-부착)
+    - [(선택) DB 적재](#선택-db-적재)
 5. [단계별 검증 방법](#5-단계별-검증-방법)
 6. [주요 상수 및 설정](#6-주요-상수-및-설정)
 7. [산출물 스펙](#7-산출물-스펙)
-8. [트러블슈팅](#8-트러블슈팅)
+8. [100대 명산 edgeIds 재매핑 절차](#8-100대-명산-edgeids-재매핑-절차)
+9. [트러블슈팅](#9-트러블슈팅)
 
 ---
 
@@ -237,10 +238,10 @@ python scripts/c_analyze/run_pipeline.py
 - 입력: `trail_network_edges.geojson`, `trail_network_nodes.geojson` (Stage B)
 - 입력: `korea_dem.tif`, `standard_summit.geojson` (Stage A)
 - 출력:
-  - `data/interim/c_output/node_with_elevation.geojson`
-  - `data/interim/c_output/final_trail_dataset.geojson`
-  - `data/interim/c_output/summit_points.geojson`
-  - `data/interim/c_output/quality_report.md`
+    - `data/interim/c_output/node_with_elevation.geojson`
+    - `data/interim/c_output/final_trail_dataset.geojson`
+    - `data/interim/c_output/summit_points.geojson`
+    - `data/interim/c_output/quality_report.md`
 
 **주요 계산:**
 
@@ -509,7 +510,48 @@ python scripts/common/check_env.py
 
 ---
 
-## 8. 트러블슈팅
+## 8. 100대 명산 edgeIds 재매핑 절차
+
+`top100mountains.json`의 `edgeIds`가 DB 재적재 등으로 깨졌을 때 재매핑하는 방법입니다.
+
+### 실행 조건
+
+- Stage B 산출물 `trail_network_edges.geojson`이 `data/interim/b_output/`에 존재해야 합니다.
+- `top100mountains.json`이 `src/main/resources/data/`에 존재해야 합니다.
+
+### 실행 방법
+
+```bash
+# backend/python/ 디렉터리에서 실행
+python scripts/c_analyze/remap_edgeids.py
+```
+
+### 출력
+
+- `src/main/resources/data/top100mountains_remapped.json` 생성
+- 매핑된 산 / 매핑 실패 산 목록 터미널에 출력
+
+### 반영 방법
+
+결과를 확인한 후 `top100mountains.json`에 덮어씁니다.
+
+```bash
+# Windows
+copy src\main\resources\data\top100mountains_remapped.json src\main\resources\data\top100mountains.json
+
+# macOS/Linux
+cp src/main/resources/data/top100mountains_remapped.json src/main/resources/data/top100mountains.json
+```
+
+### 주의사항
+
+- 자동 매핑 기준(`mountain_name` exact match + 좌표 최단거리)으로 확정된 edge만 반영합니다.
+- 매핑 실패 산은 `edgeIds: []`로 유지됩니다.
+- 덮어쓰기 전 반드시 remapped JSON의 edge_id가 DB에 존재하는지 검증하세요.
+
+---
+
+## 9. 트러블슈팅
 
 ### PROJ 관련 오류
 
