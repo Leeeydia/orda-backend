@@ -60,7 +60,8 @@ public class SummitService {
 
         if (verified) {
             boolean alreadyVerified = summitVerificationRepository
-                    .existsBySessionIdAndSummitId(request.getSessionId(), nearest.getSummit_id());
+                    .existsBySessionIdAndSummitIdAndVerificationMethod(
+                            request.getSessionId(), nearest.getSummit_id(), "gps");
 
             if (!alreadyVerified) {
                 Point userPoint = geometryFactory.createPoint(
@@ -146,7 +147,8 @@ public class SummitService {
         String photoPath = null;
         if (verified) {
             boolean alreadyVerified = summitVerificationRepository
-                    .existsBySessionIdAndSummitId(sessionId, nearest.getSummit_id());
+                    .existsBySessionIdAndSummitIdAndVerificationMethod(
+                            sessionId, nearest.getSummit_id(), "photo");
 
             if (!alreadyVerified) {
                 if (photo != null && !photo.isEmpty()) {

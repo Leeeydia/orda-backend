@@ -10,4 +10,5 @@ public interface SummitVerificationRepository extends JpaRepository<SummitVerifi
     boolean existsBySessionIdAndSummitId(Long sessionId, String summitId);
     List<SummitVerification> findAllBySessionIdOrderByVerifiedAtAsc(Long sessionId);
 
+    boolean existsBySessionIdAndSummitIdAndVerificationMethod(Long sessionId, String summitId, String verificationMethod);
 }
