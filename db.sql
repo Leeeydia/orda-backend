@@ -123,7 +123,7 @@ CREATE TABLE summit_verifications
     verified_at          TIMESTAMP        NOT NULL DEFAULT now(),
     geom                 GEOMETRY(Point, 4326) NOT NULL,
 
-    UNIQUE (session_id, summit_id)
+    UNIQUE (session_id, summit_id, verification_method)
 );
 CREATE INDEX idx_summit_verifications_session ON summit_verifications (session_id);
 CREATE INDEX idx_summit_verifications_summit ON summit_verifications (summit_id);
