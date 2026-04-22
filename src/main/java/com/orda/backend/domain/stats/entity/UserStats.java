@@ -45,7 +45,6 @@ public class UserStats {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // [윤종민] 최초 등산 완료 시 user_stats 행이 없으면 생성
     public static UserStats createForUser(Long userId) {
         UserStats stats = new UserStats();
         stats.userId = userId;
@@ -57,7 +56,6 @@ public class UserStats {
         return stats;
     }
 
-    // [윤종민] 등산 완료 시 통계 누적 업데이트
     public void addHiking(Double distanceM, Double elevationGainM,
                           Integer durationSec, LocalDateTime hikedAt) {
         this.totalHikes += 1;
@@ -65,5 +63,10 @@ public class UserStats {
         this.totalElevationGainM += elevationGainM != null ? elevationGainM : 0.0;
         this.totalDurationSec += durationSec != null ? durationSec : 0;
         this.lastHikedAt = hikedAt;
+    }
+
+    // 정상 인증 시 총 정상 수 1 증가
+    public void incrementSummits() {
+        this.totalSummits += 1;
     }
 }
