@@ -49,7 +49,8 @@ public class SummitService {
 
         if (verified) {
             boolean alreadyVerified = summitVerificationRepository
-                    .existsBySessionIdAndSummitId(request.getSessionId(), nearest.getSummit_id());
+                    .existsBySessionIdAndSummitIdAndVerificationMethod(
+                            request.getSessionId(), nearest.getSummit_id(), "gps");
 
             if (!alreadyVerified) {
                 Point userPoint = geometryFactory.createPoint(
@@ -60,6 +61,7 @@ public class SummitService {
                         .sessionId(request.getSessionId())
                         .summitId(nearest.getSummit_id())
                         .distanceToSummitM(nearest.getDistance_m())
+                        .verificationMethod("gps")
                         .geom(userPoint)
                         .build();
 
@@ -67,8 +69,9 @@ public class SummitService {
 
                 // 정상 인증 완료 시 user_stats totalSummits 증가
                 UserStats stats = userStatsRepository.findByUserId(userId)
-                        .orElseGet(() -> userStatsRepository.save(UserStats.createForUser(userId)));
+                        .orElseGet(() -> UserStats.createForUser(userId));
                 stats.incrementSummits();
+                userStatsRepository.save(stats);
             }
         }
 
