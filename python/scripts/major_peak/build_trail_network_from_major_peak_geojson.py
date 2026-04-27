@@ -175,6 +175,11 @@ def normalize_input_features(data: dict[str, Any]) -> tuple[list[dict[str, Any]]
                 "mountain_name": properties.get("mountain_name"),
                 "course_id": properties.get("course_id"),
                 "course_name": properties.get("course_name"),
+
+                # 코스 단위 추천을 위한 GPX 파일 출처
+                "source_gpx": properties.get("source_gpx"),
+
+                # 기존 추적용 메타
                 "track_name": properties.get("track_name"),
                 "source": properties.get("source"),
                 "source_ref": properties.get("source_ref"),
@@ -203,6 +208,7 @@ def sort_segments_for_stable_output(segments: list[dict[str, Any]]) -> list[dict
             str(s.get("mountain_id") or ""),
             str(s.get("mountain_name") or ""),
             str(s.get("course_id") or ""),
+            str(s.get("source_gpx") or ""),
             str(s.get("trail_id") or ""),
             int(s.get("segment_order") or 0),
             str(s.get("source_ref") or ""),
@@ -255,6 +261,9 @@ def build_raw_network_features(
                 "segment_order": segment.get("segment_order"),
                 "is_bidirectional": segment.get("is_bidirectional", True),
                 "merge_status": "raw",
+
+                # 코스 단위 추천을 위한 GPX 파일 출처
+                "source_gpx": segment.get("source_gpx"),
 
                 # 추적용 메타
                 "mountain_id": segment.get("mountain_id"),

@@ -11,7 +11,7 @@ from typing import Any
 # 1. 경로 설정
 # =========================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]  # /python/src 기준
+PROJECT_ROOT = Path(__file__).resolve().parents[2]  # /python 기준
 INPUT_ROOT = PROJECT_ROOT / "data" / "raw" / "major_peak_gpx_raw"
 OUTPUT_PATH = PROJECT_ROOT / "data" / "interim" / "a_output" / "major_peak_trails_merged.geojson"
 
@@ -90,6 +90,19 @@ def first_child_text(parent: ET.Element, name: str) -> str | None:
     return None
 
 
+def get_source_gpx(gpx_path: Path) -> str:
+    """
+    추천 기능에서 코스 단위로 edge를 묶기 위한 GPX 출처 키.
+
+    폴더명과 파일명이 중복 성격을 가지므로,
+    source_gpx에는 파일명만 저장한다.
+
+    예:
+    만장봉_0000000001.gpx
+    """
+    return gpx_path.name
+
+
 # =========================================================
 # 3. GPX 파싱
 # =========================================================
@@ -97,6 +110,7 @@ def first_child_text(parent: ET.Element, name: str) -> str | None:
 def extract_sequences_from_gpx(gpx_path: Path) -> list[dict[str, Any]]:
     """
     GPX 파일에서 LineString 후보 좌표열을 추출한다.
+
     우선순위:
     1) trk/trkseg/trkpt
     2) rte/rtept
@@ -197,6 +211,8 @@ def build_features_from_gpx(gpx_path: Path) -> list[dict[str, Any]]:
     course_name, course_seq = parse_course_name_and_seq(gpx_path.stem)
     course_id = f"{mountain_id}_{course_seq}"
 
+    source_gpx = get_source_gpx(gpx_path)
+
     sequences = extract_sequences_from_gpx(gpx_path)
     features: list[dict[str, Any]] = []
 
@@ -211,6 +227,11 @@ def build_features_from_gpx(gpx_path: Path) -> list[dict[str, Any]]:
                 "mountain_name": mountain_name,
                 "course_id": course_id,
                 "course_name": course_name,
+
+                # 코스 단위 추천을 위한 GPX 파일 출처
+                "source_gpx": source_gpx,
+
+                # 기존 추적용 메타
                 "track_name": sequence["track_name"],
                 "source": SOURCE_NAME,
                 "source_ref": relative_path,
