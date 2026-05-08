@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./docs/ORDA_logo_horizontal.svg" alt="ORDA 로고" width="420"/>
+  <img src="./assets/readme/ORDA_logo_horizontal.svg" alt="ORDA 로고" width="420"/>
 </p>
 
 # 🏔 ORDA : 오르다
@@ -40,17 +40,17 @@
   <tbody>
     <tr>
       <td align="center">
-        <img src="./docs/김지현.jpg" width="160" height="205" alt="김지현"/><br/>
+        <img src="./assets/readme/김지현.jpg" width="160" height="205" alt="김지현"/><br/>
         <sub>팀장</sub><br/>
         <sub><b>김지현</b></sub>
       </td>
       <td align="center">
-        <img src="./docs/이윤지.png" width="160" height="205" alt="이윤지"/><br/>
+        <img src="./assets/readme/이윤지.png" width="160" height="205" alt="이윤지"/><br/>
         <sub>팀원</sub><br/>
         <sub><b>이윤지</b></sub>
       </td>
       <td align="center">
-        <img src="./docs/윤종민.png" width="160" height="205" alt="윤종민"/><br/>
+        <img src="./assets/readme/윤종민.png" width="160" height="205" alt="윤종민"/><br/>
         <sub>팀원</sub><br/>
         <sub><b>윤종민</b></sub>
       </td>
@@ -65,7 +65,7 @@
 | **윤종민** | 난이도 지도, 100대 명산 모드, 마이페이지, 개인정보 수정, 홈, 가이드, 공통 컴포넌트 | [GitHub](https://github.com/yxh750501-sys) | [Velog](https://velog.io/@yxh750507/posts) |
 
 <p align="center">
-  <img src="./docs/team_photo.jpg" alt="ORDA 팀 단체사진" width="600"/>
+  <img src="./assets/readme/team_photo.jpg" alt="ORDA 팀 단체사진" width="600"/>
 </p>
 
 > 첫 배포 직후, 실제 산에서 정상 작동을 확인하러 떠난 테스트 산행 🏔
@@ -75,7 +75,7 @@
 ## 🎥 실행 화면
 
 <p align="center">
-  <img src="./docs/orda-demo.gif" alt="ORDA 전체 기능 시연" width="320"/>
+  <img src="./assets/readme/orda-demo.gif" alt="ORDA 전체 기능 시연" width="320"/>
 </p>
 
 > 등산 시작 / GPS 추적 → 세션 상세 → 2D 리플레이 → 정상 인증 → 난이도 지도 → 마이페이지까지 전체 기능 시연 (약 1분 54초)
@@ -127,8 +127,8 @@
 <summary><strong>1. 회원가입 / 로그인</strong></summary>
 
 <p align="center">
-  <img src="./docs/1_로그인_페이지.png" alt="로그인 화면" height="500"/>
-  <img src="./docs/1_회원가입_페이지.png" alt="회원가입 화면" height="500"/>
+  <img src="./assets/readme/1_로그인_페이지.png" alt="로그인 화면" height="500"/>
+  <img src="./assets/readme/1_회원가입_페이지.png" alt="회원가입 화면" height="500"/>
 </p>
 
 - **이메일/비밀번호 로그인**: JWT 기반 인증, Bearer 토큰 자동 부착
@@ -142,7 +142,7 @@
 <summary><strong>2. 등산 시작 / GPS 실시간 추적</strong></summary>
 
 <p align="center">
-  <img src="./docs/2_실시간_GPS.png" alt="등산 추적 화면" width="320"/>
+  <img src="./assets/readme/2_실시간_GPS.png" alt="등산 추적 화면" width="320"/>
 </p>
 
 - **등산로 근접 검증**: 반경 100m 내 등산로 검증 후 세션 시작
@@ -159,7 +159,7 @@
 <summary><strong>3. 정상 인증 (GPS + AI 사진)</strong></summary>
 
 <p align="center">
-  <img src="./docs/3_정상_인증_화면.gif" alt="정상 인증 화면" width="320"/>
+  <img src="./assets/readme/3_정상_인증_화면.gif" alt="정상 인증 화면" width="320"/>
 </p>
 
 - **GPS 인증**: 최근접 정상 반경 내 진입 시 자동 인증, 중복 인증 회피
@@ -175,7 +175,7 @@
 <summary><strong>4. 세션 상세 / 고도 프로파일</strong></summary>
 
 <p align="center">
-  <img src="./docs/4_세션_상세.gif" alt="세션 상세 화면" width="320"/>
+  <img src="./assets/readme/4_세션_상세.gif" alt="세션 상세 화면" width="320"/>
 </p>
 
 - **트랙 시각화**: GeoJSON FeatureCollection으로 지도에 경로 표시
@@ -189,7 +189,7 @@
 <summary><strong>5. 2D 리플레이</strong></summary>
 
 <p align="center">
-  <img src="./docs/5_2D_리플레이.gif" alt="리플레이 화면" width="320"/>
+  <img src="./assets/readme/5_2D_리플레이.gif" alt="리플레이 화면" width="320"/>
 </p>
 
 - **카메라 모드 4단계**: `intro-overview → focus-start → follow → outro-overview`
@@ -204,7 +204,7 @@
 <summary><strong>6. 난이도 지도</strong></summary>
 
 <p align="center">
-  <img src="./docs/6_난이도_지도.png" alt="난이도 지도 화면" width="320"/>
+  <img src="./assets/readme/6_난이도_지도.png" alt="난이도 지도 화면" width="320"/>
 </p>
 
 - **난이도 계산**: 거리 / 경사도 / 고도차 기반 난이도 스코어
@@ -217,8 +217,8 @@
 <summary><strong>7. 마이페이지 / 프로필 관리</strong></summary>
 
 <p align="center">
-  <img src="./docs/7_마이페이지.png" alt="마이페이지 화면" height="500"/>
-  <img src="./docs/7_개인정보수정.png" alt="개인정보 수정 화면" height="500"/>
+  <img src="./assets/readme/7_마이페이지.png" alt="마이페이지 화면" height="500"/>
+  <img src="./assets/readme/7_개인정보수정.png" alt="개인정보 수정 화면" height="500"/>
 </p>
 
 - **누적 통계**: 총 등산 횟수 / 정상 인증 수 / 누적 거리 / 누적 상승 고도
@@ -232,7 +232,7 @@
 <summary><strong>8. 가이드 페이지</strong></summary>
 
 <p align="center">
-  <img src="./docs/8_가이드페이지.png" alt="가이드 화면" width="320"/>
+  <img src="./assets/readme/8_가이드페이지.png" alt="가이드 화면" width="320"/>
 </p>
 
 - 등산 준비물 / 안전 수칙 / 산행 예절 등 정적 정보 제공
@@ -415,7 +415,7 @@ Slack으로 실시간 커뮤니케이션을 통해 협업 효율을 극대화했
   **결과**: 등산로 조각(edge) 수가 크게 줄어 지도 품질이 개선되었고, 실제 등산로만 난이도 레이어에 표시됩니다.
 
 <p align="center">
-  <img src="./docs/트러블슈팅_01.png" alt="지도 데이터 품질 정리 - Before/After" width="500"/>
+  <img src="./assets/readme/트러블슈팅_01.png" alt="지도 데이터 품질 정리 - Before/After" width="500"/>
 </p>
 
 </details>
@@ -436,7 +436,7 @@ Raw GPS를 그대로 사용하면 트랙이 **등산로 밖에 찍히고**, **�
 **결과**: 트랙 신뢰도와 고도 그래프 품질이 모두 개선되었고, 필요 시 원본 raw 값으로 언제든 롤백 가능한 구조가 되었습니다.
 
 <p align="center">
-  <img src="./docs/트러블슈팅_02.png" alt="GPS raw vs snapped 비교 + 보정 파이프라인" width="500"/>
+  <img src="./assets/readme/트러블슈팅_02.png" alt="GPS raw vs snapped 비교 + 보정 파이프라인" width="500"/>
 </p>
 
 </details>
@@ -461,7 +461,7 @@ Raw GPS를 그대로 사용하면 트랙이 **등산로 밖에 찍히고**, **�
 **결과**: 테스트 가능한 운영 상태를 확보. 이후 구조는 lazy load / 타일 단위 청크 로딩으로 개선할 여지가 남아있습니다.
 
 <p align="center">
-  <img src="./docs/트러블슈팅_03.png" alt="DEM OOM 로그 및 Local → Render → Cloud Run 배포 흐름" width="500"/>
+  <img src="./assets/readme/트러블슈팅_03.png" alt="DEM OOM 로그 및 Local → Render → Cloud Run 배포 흐름" width="500"/>
 </p>
 
 </details>
